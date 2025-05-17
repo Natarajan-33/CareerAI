@@ -41,8 +41,6 @@ if "user_logged_in" not in st.session_state:
     st.session_state.user_logged_in = False
 if "user_info" not in st.session_state:
     st.session_state.user_info = None
-if "current_step" not in st.session_state:
-    st.session_state.current_step = "welcome"
 if "user_data" not in st.session_state:
     st.session_state.user_data = {
         "profile_type": None,
@@ -128,53 +126,7 @@ def main():
         
         st.divider()
         
-        # Navigation menu
-        if st.session_state.current_step == "welcome":
-            current_page = "Welcome & Onboarding"
-        elif st.session_state.current_step == "ikigai":
-            current_page = "Ikigai Discovery"
-        elif st.session_state.current_step == "domain":
-            current_page = "Domain Selection"
-        elif st.session_state.current_step == "projects":
-            current_page = "Project Selection"
-        elif st.session_state.current_step == "progress":
-            current_page = "Progress Tracking"
-        elif st.session_state.current_step == "daily_post":
-            current_page = "Daily Build in Public"
-        elif st.session_state.current_step == "milestones":
-            current_page = "Project Milestones"
-        elif st.session_state.current_step == "friction_points":
-            current_page = "Friction & Delight Points"
-        elif st.session_state.current_step == "firm_alerts":
-            current_page = "Target Firm Alerts"
-        else:
-            current_page = "Welcome & Onboarding"
-        
-        pages = [
-            "Welcome & Onboarding",
-            "Ikigai Discovery",
-            "Domain Selection",
-            "Project Selection",
-            "Progress Tracking",
-            "Daily Build in Public",
-            "Project Milestones",
-            "Friction & Delight Points",
-            "Target Firm Alerts"
-        ]
-        
-        # Highlight current page and disable pages that aren't accessible yet
-        for page in pages:
-            if page == current_page:
-                st.markdown(f"**→ {page}**")
-            elif pages.index(page) < pages.index(current_page):
-                if st.button(page, key=f"nav_{page}"):
-                    st.session_state.current_step = page.lower().replace(" & ", "_").replace(" ", "_")
-                    st.rerun()
-            else:
-                st.markdown(f"*{page}*")
-        
         # Login/Logout button
-        st.divider()
         if st.session_state.user_logged_in:
             if st.button("Logout"):
                 if not is_guest_user(st.session_state.user_info):
@@ -189,35 +141,50 @@ def main():
     if not st.session_state.user_logged_in:
         authenticate()
     else:
-        # Debug info for current step and projects count
-        with st.sidebar:
-            if st.session_state.current_step == "progress" and len(st.session_state.projects) == 0:
-                st.error("Navigation issue detected: Trying to show Progress page but no projects found!")
+        # Tab-based navigation
+        tab_names = [
+            "Welcome & Onboarding",
+            "Ikigai Discovery",
+            "Domain Selection",
+            "Project Selection",
+            "Progress Tracking",
+            "Daily Build in Public", 
+            "Project Milestones",
+            "Friction & Delight Points",
+            "Target Firm Alerts"
+        ]
         
-        if st.session_state.current_step == "welcome":
+        tabs = st.tabs(tab_names)
+        
+        with tabs[0]:
             show_welcome_page()
-        elif st.session_state.current_step == "ikigai":
+        
+        with tabs[1]:
             show_ikigai_page()
-        elif st.session_state.current_step == "domain":
+        
+        with tabs[2]:
             show_domain_page()
-        elif st.session_state.current_step == "projects":
+        
+        with tabs[3]:
             show_project_page()
-        elif st.session_state.current_step == "progress":
-            # Ensure we have projects before going to progress page
+        
+        with tabs[4]:
+            # Check if we have projects before showing progress page
             if len(st.session_state.projects) > 0:
                 show_progress_page()
             else:
-                st.error("No projects selected yet. Please select a project first.")
-                # Auto-redirect back to projects page
-                st.session_state.current_step = "projects"
-                st.rerun()
-        elif st.session_state.current_step == "daily_post":
+                st.error("No projects selected yet. Please select a project in the Project Selection tab first.")
+        
+        with tabs[5]:
             show_daily_post_page()
-        elif st.session_state.current_step == "milestones":
+        
+        with tabs[6]:
             show_milestone_page()
-        elif st.session_state.current_step == "friction_points":
+        
+        with tabs[7]:
             show_friction_points_page()
-        elif st.session_state.current_step == "firm_alerts":
+        
+        with tabs[8]:
             show_firm_alerts_page()
 
 # Welcome & Onboarding Page
@@ -273,10 +240,8 @@ def show_welcome_page():
             except Exception as e:
                 st.warning(f"Could not save profile to database: {str(e)}")
         
-        # Enable next step button
-        if st.button("Continue to Ikigai Discovery", type="primary"):
-            st.session_state.current_step = "ikigai"
-            st.rerun()
+        # Guide to next tab
+        st.success("Profile information saved! Please proceed to the Ikigai Discovery tab.")
     else:
         st.info("Please fill out the information above to continue.")
 
@@ -337,10 +302,8 @@ def show_ikigai_page():
                         except Exception as e:
                             st.warning(f"Could not save ikigai data to database: {str(e)}")
                     
-                    # Enable next step button
-                    if st.button("Continue to Domain Selection", type="primary"):
-                        st.session_state.current_step = "domain"
-                        st.rerun()
+                    # Guide to next tab
+                    st.success("Ikigai information saved! Please proceed to the Domain Selection tab.")
                         
                 except Exception as e:
                     st.error(f"Error generating domain suggestion: {str(e)}")
@@ -412,15 +375,11 @@ def show_domain_page():
                 except Exception as e:
                     st.warning(f"Could not save domain selection to database: {str(e)}")
             
-            # Enable next step button
-            if st.button("Continue to Project Selection", type="primary"):
-                st.session_state.current_step = "projects"
-                st.rerun()
+            # Guide to next tab
+            st.success("Domain selection saved! Please proceed to the Project Selection tab.")
     else:
         st.error("Please complete the Ikigai Discovery step first.")
-        if st.button("Go back to Ikigai Discovery"):
-            st.session_state.current_step = "ikigai"
-            st.rerun()
+        st.info("Go to the Ikigai Discovery tab to complete that step first.")
 
 # Project Selection Page
 def show_project_page():
@@ -481,30 +440,20 @@ def show_project_page():
             for i, task in enumerate(selected_project["tasks"]):
                 st.checkbox(task, key=f"task_{len(st.session_state.projects)-1}_{i}")
             
-            # Enable next step button
-            if st.button("Continue to Progress Tracking", type="primary"):
-                # Verify project is in session state before proceeding
-                if len(st.session_state.projects) > 0:
-                    st.session_state.current_step = "progress"
-                    st.rerun()
-                else:
-                    st.error("Error: No projects found. Please select a project before continuing.")
+            # Guide to next tab
+            st.success("You can now track your progress in the Progress Tracking tab.")
     else:
         st.error("Please select a domain first.")
-        if st.button("Go back to Domain Selection"):
-            st.session_state.current_step = "domain"
-            st.rerun()
+        st.info("Go to the Domain Selection tab to select a domain first.")
 
 # Progress Tracking Page
 def show_progress_page():
     st.title("Progress Tracking Dashboard 📊")
     
-    # Debug information
+    # Check if user has selected any projects
     if len(st.session_state.projects) == 0:
         st.error("You haven't selected any projects yet.")
-        if st.button("Go back to Project Selection"):
-            st.session_state.current_step = "projects"
-            st.rerun()
+        st.info("Please go to the Project Selection tab first to select a project.")
         return
     
     # Display all selected projects
@@ -622,7 +571,8 @@ def show_daily_post_page():
         project_title = st.session_state.projects[selected_project_index]["title"]
         domain = st.session_state.user_data.get("domain_selected", "AI/ML")
     else:
-        st.warning("You don't have any projects yet. Let's create one for your posts.")
+        st.warning("You don't have any projects yet.")
+        st.info("Consider visiting the Project Selection tab first to select a project.")
         project_title = st.text_input("Project title:")
         domain = st.session_state.user_data.get("domain_selected", "")
         if not domain:
@@ -710,9 +660,7 @@ def show_milestone_page():
     # Project selection
     if not st.session_state.projects:
         st.error("You need to create projects first before setting milestones.")
-        if st.button("Go to Project Selection"):
-            st.session_state.current_step = "projects"
-            st.rerun()
+        st.info("Please go to the Project Selection tab first to select a project.")
         return
     
     project_titles = [p["title"] for p in st.session_state.projects]
@@ -904,9 +852,7 @@ def show_friction_points_page():
     # Project selection
     if not st.session_state.projects:
         st.error("You need to create projects first before analyzing them.")
-        if st.button("Go to Project Selection"):
-            st.session_state.current_step = "projects"
-            st.rerun()
+        st.info("Please go to the Project Selection tab first to select a project.")
         return
     
     project_titles = [p["title"] for p in st.session_state.projects]
