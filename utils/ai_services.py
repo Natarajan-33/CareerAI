@@ -95,7 +95,6 @@ def generate_social_media_post(project_title, domain, tasks_completed, progress_
                 {"role": "system", "content": "You are a professional social media content creator who specializes in tech and AI."},
                 {"role": "user", "content": prompt}
             ],
-            max_completion_tokens=200,
             temperature=0.7
         )
         
@@ -160,7 +159,6 @@ def generate_daily_post(project_title, domain, day_number, goals_for_today, lear
                 {"role": "system", "content": "You are a professional content creator specializing in tech career development content."},
                 {"role": "user", "content": prompt}
             ],
-            max_completion_tokens=350,
             temperature=0.7
         )
         
@@ -252,7 +250,6 @@ def analyze_delta4(project_description, current_status, challenges, goals):
                 {"role": "system", "content": "You are an expert project analyst specializing in identifying friction and delight points in technical projects."},
                 {"role": "user", "content": prompt}
             ],
-            max_completion_tokens=1000,
             temperature=0.3,
             response_format={"type": "json_object"}
         )
@@ -353,7 +350,6 @@ def get_company_insights(company_name, domain=None, skills=None):
                 {"role": "system", "content": "You are a career research specialist with expertise in technology companies and hiring trends in AI and machine learning."},
                 {"role": "user", "content": prompt}
             ],
-            max_completion_tokens=1500,
             temperature=0.5,
             response_format={"type": "json_object"}
         )

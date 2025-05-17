@@ -111,7 +111,7 @@ def authenticate():
 def main():
     # Sidebar
     with st.sidebar:
-        st.image("https://via.placeholder.com/150x150.png?text=CareerAI", width=150)
+        st.image("static\images\careerAI.png", width=150)
         st.title("CareerAI")
         st.caption("Your AI-powered career companion")
         
@@ -357,18 +357,11 @@ def show_domain_page():
             # Save to database if logged in (not as guest)
             if st.session_state.user_logged_in and not is_guest_user(st.session_state.user_info):
                 try:
-                    # Save ikigai final domain
+                    # Save ikigai final domain to ikigai_logs table
                     save_ikigai_data(
                         get_user_property(st.session_state.user_info, "id"),
                         {
-                            "final_domain": final_domain
-                        }
-                    )
-                    
-                    # Also update user profile
-                    save_user_profile(
-                        get_user_property(st.session_state.user_info, "id"),
-                        {
+                            "final_domain": final_domain,
                             "domain_selected": selected_domain
                         }
                     )
@@ -477,7 +470,7 @@ def show_progress_page():
             task_data = []
             for j, task in enumerate(project["tasks"]):
                 task_key = f"task_{i}_{j}"
-                completed = st.checkbox(task, key=task_key, value=st.session_state.get(task_key, False))
+                completed = st.checkbox(task, value=st.session_state.get(task_key, False), key=f"task_checkbox_{i}_{j}")
                 
                 if completed:
                     task_data.append({"Task": task, "Status": "Completed", "Notes": ""})
@@ -598,8 +591,8 @@ def show_daily_post_page():
                     st.rerun()
         
         # Add new target firm
-        new_firm = st.text_input("Add a target company:")
-        if st.button("Add Company") and new_firm:
+        new_firm = st.text_input("Add a target company:", placeholder="e.g., Google, OpenAI, NVIDIA", key="add_company_firm_alerts_3")
+        if st.button("Add Company", key="add_company_firm_alerts_2") and new_firm:
             st.session_state.target_firms.append(new_firm)
             st.rerun()
     
@@ -761,23 +754,23 @@ def show_milestone_page():
         
         # Display milestones in each tab
         with all_tab:
-            display_milestones(st.session_state.milestones[project_id], project_id, status_options)
+            display_milestones(st.session_state.milestones[project_id], project_id, status_options, "all_tab")
         
         with not_started_tab:
             if milestones_by_status["not_started"]:
-                display_milestones(milestones_by_status["not_started"], project_id, status_options)
+                display_milestones(milestones_by_status["not_started"], project_id, status_options, "not_started_tab")
             else:
                 st.info("No milestones in this category.")
         
         with in_progress_tab:
             if milestones_by_status["in_progress"]:
-                display_milestones(milestones_by_status["in_progress"], project_id, status_options)
+                display_milestones(milestones_by_status["in_progress"], project_id, status_options, "in_progress_tab")
             else:
                 st.info("No milestones in this category.")
         
         with completed_tab:
             if milestones_by_status["completed"]:
-                display_milestones(milestones_by_status["completed"], project_id, status_options)
+                display_milestones(milestones_by_status["completed"], project_id, status_options, "completed_tab")
             else:
                 st.info("No milestones in this category.")
         
@@ -791,7 +784,7 @@ def show_milestone_page():
         st.write(f"{int(progress * 100)}% complete ({completed_milestones}/{total_milestones} milestones)")
 
 # Helper function to display milestones
-def display_milestones(milestones, project_id, status_options):
+def display_milestones(milestones, project_id, status_options, tab_name):
     for i, milestone in enumerate(milestones):
         with st.container():
             col1, col2 = st.columns([0.7, 0.3])
@@ -816,12 +809,17 @@ def display_milestones(milestones, project_id, status_options):
             
             with col2:
                 current_status = milestone.get('status', 'not_started')
+                milestone_id = milestone.get('id', str(i))
+                
+                # Create a unique key using all available unique identifiers including tab_name
+                status_key = f"status_{project_id}_{milestone_id}_{tab_name}_{i}"
+                
                 new_status = st.selectbox(
                     "Status",
                     options=list(status_options.keys()),
                     format_func=lambda x: status_options[x],
                     index=list(status_options.keys()).index(current_status),
-                    key=f"status_{milestone.get('id', i)}"
+                    key=status_key
                 )
                 
                 # If status changed, update it
@@ -938,7 +936,7 @@ def show_friction_points_page():
                     display_dimension_analysis(analysis, "expectation")
                 
                 # Save analysis button
-                if st.button("Save Analysis to Project"):
+                if st.button("Save Analysis to Project", key="save_analysis_button"):
                     # Logic to save analysis to project data
                     st.success("Analysis saved to project!")
                     
@@ -1099,8 +1097,8 @@ def show_firm_alerts_page():
                         st.rerun()
             
             # Add new target firm
-            new_firm = st.text_input("Add a target company:", placeholder="e.g., Google, OpenAI, NVIDIA")
-            if st.button("Add Company") and new_firm:
+            new_firm = st.text_input("Add a target company:", placeholder="e.g., Google, OpenAI, NVIDIA", key="add_company_firm_alerts_1")
+            if st.button("Add Company", key="add_company_firm_alerts") and new_firm:
                 st.session_state.target_firms.append(new_firm)
                 st.rerun()
     
@@ -1117,8 +1115,8 @@ def show_firm_alerts_page():
                         st.rerun()
             
             # Add new skill
-            new_skill = st.text_input("Add a skill:", placeholder="e.g., Python, PyTorch, NLP")
-            if st.button("Add Skill") and new_skill:
+            new_skill = st.text_input("Add a skill:", placeholder="e.g., Python, PyTorch, NLP", key="add_skill_button_1")
+            if st.button("Add Skill", key="add_skill_button") and new_skill:
                 st.session_state.user_skills.append(new_skill)
                 st.rerun()
     
