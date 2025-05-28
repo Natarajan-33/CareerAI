@@ -1,5 +1,8 @@
 # Environment variables
 .env
+node_modules
+career_env/
+
 
 # Python cache files
 __pycache__/
