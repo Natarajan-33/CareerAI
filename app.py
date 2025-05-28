@@ -135,7 +135,7 @@ def main():
                 st.session_state.user_info = None
                 st.rerun()
         
-        st.caption("© 2023 CareerAI")
+        st.caption("© 2025 CareerAI")
 
     # Content
     if not st.session_state.user_logged_in:
