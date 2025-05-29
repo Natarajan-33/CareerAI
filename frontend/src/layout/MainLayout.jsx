@@ -19,11 +19,31 @@ const MainLayout = ({ toggleDarkMode, darkMode }) => {
                 <Link to="/" className="border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-300 dark:hover:text-white hover:border-gray-300 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
                   Home
                 </Link>
-                <Link to="/ikigai" className="border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-300 dark:hover:text-white hover:border-gray-300 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
-                  Ikigai
+                <Link to="/ikigai" className="group relative border-transparent text-gray-500 hover:text-primary-600 dark:text-gray-300 dark:hover:text-primary-400 inline-flex items-center px-4 pt-1 text-sm font-medium overflow-hidden">
+                  <span className="absolute bottom-0 left-0 w-full h-0.5 bg-gradient-to-r from-primary-500 to-purple-500 transform scale-x-0 origin-left transition-transform duration-300 ease-out group-hover:scale-x-100"></span>
+                  <span className="flex items-center relative z-10">
+                    <span className="relative overflow-hidden mr-1.5 inline-block">
+                      <span className="inline-block transform transition-transform duration-300 ease-out group-hover:-translate-y-full">💡</span>
+                      <span className="absolute top-0 left-0 transform translate-y-full transition-transform duration-300 ease-out group-hover:translate-y-0">💡</span>
+                    </span>
+                    <span className="relative overflow-hidden inline-block">
+                      <span className="inline-block transform transition-transform duration-300 ease-out group-hover:-translate-y-full">Ikigai</span>
+                      <span className="absolute top-0 left-0 transform translate-y-full transition-transform duration-300 ease-out group-hover:translate-y-0">Ikigai</span>
+                    </span>
+                  </span>
                 </Link>
-                <Link to="/journey" className="border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-300 dark:hover:text-white hover:border-gray-300 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
-                  Journey
+                <Link to="/journey" className="group relative border-transparent text-gray-500 hover:text-blue-600 dark:text-gray-300 dark:hover:text-blue-400 inline-flex items-center px-4 pt-1 text-sm font-medium overflow-hidden">
+                  <span className="absolute bottom-0 left-0 w-full h-0.5 bg-gradient-to-r from-blue-500 to-primary-500 transform scale-x-0 origin-left transition-transform duration-300 ease-out group-hover:scale-x-100"></span>
+                  <span className="flex items-center relative z-10">
+                    <span className="relative overflow-hidden mr-1.5 inline-block">
+                      <span className="inline-block transform transition-transform duration-300 ease-out group-hover:-translate-y-full">🚀</span>
+                      <span className="absolute top-0 left-0 transform translate-y-full transition-transform duration-300 ease-out group-hover:translate-y-0">🚀</span>
+                    </span>
+                    <span className="relative overflow-hidden inline-block">
+                      <span className="inline-block transform transition-transform duration-300 ease-out group-hover:-translate-y-full">Journey</span>
+                      <span className="absolute top-0 left-0 transform translate-y-full transition-transform duration-300 ease-out group-hover:translate-y-0">Journey</span>
+                    </span>
+                  </span>
                 </Link>
               </nav>
             </div>
@@ -64,11 +84,17 @@ const MainLayout = ({ toggleDarkMode, darkMode }) => {
             <Link to="/" className="border-transparent text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700 hover:border-gray-300 hover:text-gray-700 dark:text-gray-300 dark:hover:text-white block pl-3 pr-4 py-2 border-l-4 text-base font-medium">
               Home
             </Link>
-            <Link to="/ikigai" className="border-transparent text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700 hover:border-gray-300 hover:text-gray-700 dark:text-gray-300 dark:hover:text-white block pl-3 pr-4 py-2 border-l-4 text-base font-medium">
-              Ikigai
+            <Link to="/ikigai" className="border-transparent text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700 hover:border-primary-500 hover:text-primary-700 dark:text-gray-300 dark:hover:text-primary-400 block pl-3 pr-4 py-2 border-l-4 text-base font-medium">
+              <span className="inline-flex items-center">
+                <span className="mr-2">💡</span>
+                Ikigai
+              </span>
             </Link>
-            <Link to="/journey" className="border-transparent text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700 hover:border-gray-300 hover:text-gray-700 dark:text-gray-300 dark:hover:text-white block pl-3 pr-4 py-2 border-l-4 text-base font-medium">
-              Journey
+            <Link to="/journey" className="border-transparent text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700 hover:border-blue-500 hover:text-blue-700 dark:text-gray-300 dark:hover:text-blue-400 block pl-3 pr-4 py-2 border-l-4 text-base font-medium">
+              <span className="inline-flex items-center">
+                <span className="mr-2">🚀</span>
+                Journey
+              </span>
             </Link>
           </div>
           <div className="pt-4 pb-3 border-t border-gray-200 dark:border-gray-700">

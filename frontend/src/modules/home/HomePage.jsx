@@ -24,15 +24,81 @@ const HomePage = () => {
                   CareerAI helps you find your purpose and build a career path in high-demand AI/ML and robotics roles through personalized guidance and actionable steps.
                 </p>
                 <div className="mt-5 sm:mt-8 sm:flex sm:justify-center lg:justify-start">
-                  <div className="rounded-md shadow">
-                    <Link to="/ikigai" className="w-full flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 md:py-4 md:text-lg md:px-10">
-                      Start Ikigai Analysis
+                  <div className="flex flex-col items-center">
+                    <Link to="/ikigai" className="group relative w-full overflow-hidden flex items-center justify-center px-8 py-3 text-base font-medium md:py-4 md:text-lg md:px-10 rounded-xl bg-gradient-to-br from-primary-500 to-purple-600 text-white shadow-lg hover:shadow-xl transition-all duration-300">
+                      <span className="absolute inset-0 w-full h-full bg-gradient-to-br from-primary-400 to-purple-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
+                      <span className="absolute -inset-1 bg-gradient-to-r from-primary-600 to-purple-700 rounded-xl blur opacity-30 group-hover:opacity-50 transition duration-300"></span>
+                      <span className="relative flex items-center">
+                        <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M12 4.75L19.25 9L12 13.25L4.75 9L12 4.75Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                          <path d="M9.25 11.5L4.75 14L12 18.25L19.25 14L14.75 11.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                        Start Ikigai Analysis
+                      </span>
                     </Link>
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ 
+                        delay: 0.3, 
+                        duration: 0.6,
+                        type: "spring",
+                        stiffness: 300
+                      }}
+                      className="mt-3 relative"
+                    >
+                      <div className="relative inline-flex flex-col items-center">
+                        {/* Arrow pointing up to the button */}
+                        <div className="mb-1">
+                          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M12 4L12 16" stroke="#8B5CF6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                            <path d="M7 9L12 4L17 9" stroke="#8B5CF6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                        </div>
+                        <div className="inline-flex items-center">
+                          <span className="mr-1 text-sm">💡</span>
+                          <span className="text-xs font-medium text-primary-600 dark:text-primary-400 tracking-wider">KNOW WHAT YOU WANT</span>
+                        </div>
+                      </div>
+                    </motion.div>
                   </div>
-                  <div className="mt-3 sm:mt-0 sm:ml-3">
-                    <Link to="/journey" className="w-full flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-primary-700 bg-primary-100 hover:bg-primary-200 dark:text-primary-300 dark:bg-gray-800 dark:hover:bg-gray-700 md:py-4 md:text-lg md:px-10">
-                      Explore Career Journey
+                  <div className="mt-3 sm:mt-0 sm:ml-3 flex flex-col items-center">
+                    <Link to="/journey" className="group relative w-full overflow-hidden flex items-center justify-center px-8 py-3 text-base font-medium md:py-4 md:text-lg md:px-10 rounded-xl bg-gradient-to-br from-blue-500 to-primary-500 text-white shadow-lg hover:shadow-xl transition-all duration-300">
+                      <span className="absolute inset-0 w-full h-full bg-gradient-to-br from-blue-400 to-primary-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
+                      <span className="absolute -inset-1 bg-gradient-to-r from-blue-600 to-primary-600 rounded-xl blur opacity-30 group-hover:opacity-50 transition duration-300"></span>
+                      <span className="relative flex items-center">
+                        <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M5 5V19H19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          <path d="M19 9L13 15L9.5 11.5L5 16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                        Explore Career Journey
+                      </span>
                     </Link>
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ 
+                        delay: 0.5, 
+                        duration: 0.6,
+                        type: "spring",
+                        stiffness: 300
+                      }}
+                      className="mt-3 relative"
+                    >
+                      <div className="relative inline-flex flex-col items-center">
+                        {/* Arrow pointing up to the button */}
+                        <div className="mb-1">
+                          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M12 4L12 16" stroke="#3B82F6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                            <path d="M7 9L12 4L17 9" stroke="#3B82F6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                        </div>
+                        <div className="inline-flex items-center">
+                          <span className="mr-1 text-sm">🚀</span>
+                          <span className="text-xs font-medium text-blue-600 dark:text-blue-400 tracking-wider">GET WHAT YOU WANT</span>
+                        </div>
+                      </div>
+                    </motion.div>
                   </div>
                 </div>
               </motion.div>
