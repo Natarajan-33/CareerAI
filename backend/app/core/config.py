@@ -1,7 +1,8 @@
 import secrets
-from typing import List, Optional, Union
+import os
+from typing import List, Optional, Union, Any
 
-from pydantic import AnyHttpUrl, BaseSettings, validator
+from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
@@ -16,15 +17,7 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8  # 8 days
     
     # CORS
-    CORS_ORIGINS: List[AnyHttpUrl] = ["http://localhost:3000"]
-
-    @validator("CORS_ORIGINS", pre=True)
-    def assemble_cors_origins(cls, v: Union[str, List[str]]) -> Union[List[str], str]:
-        if isinstance(v, str) and not v.startswith("["):
-            return [i.strip() for i in v.split(",")]
-        elif isinstance(v, (list, str)):
-            return v
-        raise ValueError(v)
+    CORS_ORIGINS: List[str] = ["http://localhost:3000"]
     
     # Supabase
     SUPABASE_URL: Optional[str] = None
@@ -33,9 +26,13 @@ class Settings(BaseSettings):
     # OpenAI
     OPENAI_API_KEY: Optional[str] = None
     
-    class Config:
-        case_sensitive = True
-        env_file = ".env"
+    # Pydantic v2 configuration
+    model_config = {
+        "env_file": ".env",
+        "env_file_encoding": "utf-8",
+        "extra": "ignore",
+        "case_sensitive": True
+    }
 
 
 settings = Settings()

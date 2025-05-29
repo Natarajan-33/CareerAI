@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from typing import List, Optional
 
-from app.models.project import Project, ProjectCreate, ProjectResponse, DomainResponse
+from app.models.project import ProjectCreate, ProjectResponse, DomainResponse
 
 router = APIRouter()
 

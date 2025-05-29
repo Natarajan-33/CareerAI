@@ -20,6 +20,7 @@ __pycache__/
 *.so
 .Python
 /backend/env/
+/backend/backend_env/
 /backend/venv/
 /backend/.env
 /backend/.venv

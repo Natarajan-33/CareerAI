@@ -24,3 +24,8 @@ class SupabaseClient:
 def get_supabase() -> Client:
     """Dependency for FastAPI to get Supabase client."""
     return SupabaseClient.get_client()
+
+
+def get_supabase_client() -> Client:
+    """Alias for get_supabase for backward compatibility."""
+    return get_supabase()
