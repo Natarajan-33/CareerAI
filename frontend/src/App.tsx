@@ -4,6 +4,9 @@ import { useEffect, useState } from 'react';
 // Layout components
 import MainLayout from './layout/MainLayout';
 
+// Store
+import { rootStore, RootStoreProvider } from './stores/index';
+
 // Page components - will be implemented later
 const HomePage = () => <div className="p-8"><h1 className="text-3xl font-bold">Welcome to CareerAI</h1><p className="mt-4">Your AI-powered career discovery and execution platform</p></div>;
 const IkigaiPage = () => <div className="p-8"><h1 className="text-3xl font-bold">Ikigai Chatbot</h1><p className="mt-4">Coming soon...</p></div>;
@@ -16,6 +19,8 @@ const FrictionPointsPage = () => <div className="p-8"><h1 className="text-3xl fo
 const TargetFirmsPage = () => <div className="p-8"><h1 className="text-3xl font-bold">Target Firm Alerts</h1><p className="mt-4">Coming soon...</p></div>;
 const LoginPage = () => <div className="p-8"><h1 className="text-3xl font-bold">Login</h1><p className="mt-4">Coming soon...</p></div>;
 const RegisterPage = () => <div className="p-8"><h1 className="text-3xl font-bold">Register</h1><p className="mt-4">Coming soon...</p></div>;
+
+// Using the singleton rootStore instance from the stores/index.ts file
 
 function App() {
   const [darkMode, setDarkMode] = useState(false);
@@ -42,8 +47,9 @@ function App() {
   }, [darkMode]);
 
   return (
-    <Router>
-      <div className={`min-h-screen transition-colors duration-200 ${darkMode ? 'dark' : ''}`}>
+    <RootStoreProvider value={rootStore}>
+      <Router>
+        <div className={`min-h-screen transition-colors duration-200 ${darkMode ? 'dark' : ''}`}>
         <Routes>
           {/* Auth routes */}
           <Route path="/login" element={<LoginPage />} />
@@ -65,8 +71,9 @@ function App() {
           {/* Fallback route */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
-      </div>
-    </Router>
+        </div>
+      </Router>
+    </RootStoreProvider>
   );
 }
 
