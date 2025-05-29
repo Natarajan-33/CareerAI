@@ -5,7 +5,7 @@ from typing import List, Optional, Dict, Any
 class ChatMessage(BaseModel):
     role: str = Field(..., description="Role of the message sender: 'user' or 'assistant'")
     content: str = Field(..., description="Content of the message")
-    sentiment: Optional[Dict[str, float]] = Field(None, description="Sentiment analysis of the message")
+    sentiment: Optional[Any] = Field(None, description="Sentiment analysis of the message")
 
 
 class SentimentAnalysis(BaseModel):
@@ -34,3 +34,4 @@ class IkigaiResponse(BaseModel):
     ai_suggestion: str
     domains: List[DomainMatch]
     sentiment: SentimentSummary
+    projects: List[str] = Field(default_factory=list, description="Suggested projects for skill development")

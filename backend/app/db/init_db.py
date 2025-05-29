@@ -247,6 +247,103 @@ def create_target_firms_table():
         result = supabase.rpc("exec_sql", {"query": sql}).execute()
         logger.info(f"Table creation result: {result}")
 
+def create_ikigai_tables():
+    """Create the ikigai_conversations and ikigai_results tables if they don't exist."""
+    supabase = get_supabase_client()
+    
+    # SQL for creating the ikigai tables
+    sql = """
+    -- Create ikigai_conversations table to store chat history
+    CREATE TABLE IF NOT EXISTS ikigai_conversations (
+        id UUID PRIMARY KEY,
+        user_id UUID NOT NULL,
+        messages JSONB NOT NULL DEFAULT '[]'::jsonb,
+        insights JSONB DEFAULT '{}'::jsonb,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    );
+
+    -- Create ikigai_results table to store analysis results
+    CREATE TABLE IF NOT EXISTS ikigai_results (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        user_id UUID NOT NULL,
+        passion TEXT,
+        strengths JSONB DEFAULT '[]'::jsonb,
+        ai_suggestion TEXT,
+        domains JSONB DEFAULT '[]'::jsonb,
+        sentiment JSONB DEFAULT '{}'::jsonb,
+        projects JSONB DEFAULT '[]'::jsonb,
+        conversation_id UUID REFERENCES ikigai_conversations(id),
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    );
+
+    -- Add RLS policies if they don't exist
+    DO $$
+    BEGIN
+        -- Enable RLS for ikigai_conversations
+        ALTER TABLE ikigai_conversations ENABLE ROW LEVEL SECURITY;
+        
+        -- Drop existing policies if they exist
+        DROP POLICY IF EXISTS "Users can view their own ikigai conversations" ON ikigai_conversations;
+        DROP POLICY IF EXISTS "Users can insert their own ikigai conversations" ON ikigai_conversations;
+        DROP POLICY IF EXISTS "Users can update their own ikigai conversations" ON ikigai_conversations;
+        DROP POLICY IF EXISTS "Users can delete their own ikigai conversations" ON ikigai_conversations;
+        
+        -- Create policies for ikigai_conversations
+        CREATE POLICY "Users can view their own ikigai conversations" ON ikigai_conversations
+            FOR SELECT USING (auth.uid() = user_id);
+        
+        CREATE POLICY "Users can insert their own ikigai conversations" ON ikigai_conversations
+            FOR INSERT WITH CHECK (auth.uid() = user_id);
+        
+        CREATE POLICY "Users can update their own ikigai conversations" ON ikigai_conversations
+            FOR UPDATE USING (auth.uid() = user_id);
+        
+        CREATE POLICY "Users can delete their own ikigai conversations" ON ikigai_conversations
+            FOR DELETE USING (auth.uid() = user_id);
+
+        -- Enable RLS for ikigai_results
+        ALTER TABLE ikigai_results ENABLE ROW LEVEL SECURITY;
+        
+        -- Drop existing policies if they exist
+        DROP POLICY IF EXISTS "Users can view their own ikigai results" ON ikigai_results;
+        DROP POLICY IF EXISTS "Users can insert their own ikigai results" ON ikigai_results;
+        DROP POLICY IF EXISTS "Users can update their own ikigai results" ON ikigai_results;
+        DROP POLICY IF EXISTS "Users can delete their own ikigai results" ON ikigai_results;
+        
+        -- Create policies for ikigai_results
+        CREATE POLICY "Users can view their own ikigai results" ON ikigai_results
+            FOR SELECT USING (auth.uid() = user_id);
+        
+        CREATE POLICY "Users can insert their own ikigai results" ON ikigai_results
+            FOR INSERT WITH CHECK (auth.uid() = user_id);
+        
+        CREATE POLICY "Users can update their own ikigai results" ON ikigai_results
+            FOR UPDATE USING (auth.uid() = user_id);
+        
+        CREATE POLICY "Users can delete their own ikigai results" ON ikigai_results
+            FOR DELETE USING (auth.uid() = user_id);
+    EXCEPTION
+        WHEN others THEN
+            RAISE NOTICE 'Error creating RLS policies: %', SQLERRM;
+    END $$;
+
+    -- Create indexes if they don't exist
+    CREATE INDEX IF NOT EXISTS idx_ikigai_conversations_user_id ON ikigai_conversations(user_id);
+    CREATE INDEX IF NOT EXISTS idx_ikigai_results_user_id ON ikigai_results(user_id);
+    CREATE INDEX IF NOT EXISTS idx_ikigai_results_conversation_id ON ikigai_results(conversation_id);
+    """
+    
+    try:
+        # Execute the SQL
+        supabase.table("ikigai_conversations").select("id").limit(1).execute()
+        logger.info("ikigai_conversations table already exists")
+    except Exception:
+        logger.info("Creating ikigai tables")
+        result = supabase.rpc("exec_sql", {"query": sql}).execute()
+        logger.info(f"Ikigai tables creation result: {result}")
+
 def init_db():
     """Initialize the database with all required tables."""
     logger.info("Creating tables if they don't exist")
@@ -256,6 +353,7 @@ def init_db():
     create_company_insights_table()
     create_delta4_analysis_table()
     create_target_firms_table()
+    create_ikigai_tables()
     
     logger.info("Database initialization complete")
 

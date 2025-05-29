@@ -26,6 +26,9 @@ class Settings(BaseSettings):
     # OpenAI
     OPENAI_API_KEY: Optional[str] = None
     
+    # Groq
+    GROQ_API_KEY: Optional[str] = None
+    
     # Pydantic v2 configuration
     model_config = {
         "env_file": ".env",

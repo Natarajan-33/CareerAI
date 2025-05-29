@@ -15,11 +15,6 @@ export class IkigaiStore {
     this.error = null;
     
     makeAutoObservable(this, { rootStore: false, ikigaiService: false });
-    
-    // Initialize with a welcome message
-    this.addAssistantMessage(
-      "Hi there! I'm your Ikigai assistant. I'll help you discover your ideal career path in AI and robotics. Let's start by talking about what you're passionate about. What topics or activities make you lose track of time?"
-    );
   }
   
   /**
@@ -114,11 +109,36 @@ export class IkigaiStore {
     this.error = null;
     
     try {
-      const result = await this.ikigaiService.generateIkigai(this.conversationId || this.messages);
+      // Save the conversation first to ensure we have a conversation_id
+      if (this.rootStore.authStore.isAuthenticated && !this.conversationId) {
+        await this.saveConversation();
+      }
+      
+      // Prepare the request payload
+      const payload = {
+        messages: this.messages,
+        user_id: this.rootStore.authStore.isAuthenticated ? this.rootStore.authStore.user.id : null
+      };
+      
+      if (this.conversationId) {
+        payload.conversation_id = this.conversationId;
+      }
+      
+      const result = await this.ikigaiService.generateIkigai(payload);
       
       runInAction(() => {
         this.ikigaiResult = result;
         this.isLoading = false;
+        
+        // Store the domain and projects in sessionStorage for use in the journey tab
+        if (result.domains && result.domains.length > 0) {
+          const selectedDomain = result.domains[0]; // Default to first domain
+          sessionStorage.setItem('selectedDomain', JSON.stringify(selectedDomain));
+        }
+        
+        if (result.projects && result.projects.length > 0) {
+          sessionStorage.setItem('suggestedProjects', JSON.stringify(result.projects));
+        }
       });
       
       return true;
@@ -172,10 +192,100 @@ export class IkigaiStore {
     this.ikigaiResult = null;
     this.conversationId = null;
     
-    // Add welcome message again
-    this.addAssistantMessage(
-      "Hi there! I'm your Ikigai assistant. I'll help you discover your ideal career path in AI and robotics. Let's start by talking about what you're passionate about. What topics or activities make you lose track of time?"
-    );
+    // Initialize with AI message
+    this.initializeConversation();
+  };
+  
+  /**
+   * Initialize the conversation with an AI message
+   */
+  initializeConversation = async () => {
+    this.isTyping = true;
+    
+    try {
+      // Create a placeholder message to show loading state
+      const placeholderId = Date.now().toString();
+      const placeholderMessage = {
+        id: placeholderId,
+        role: 'assistant',
+        content: '',
+        timestamp: new Date(),
+        isLoading: true
+      };
+      
+      this.messages.push(placeholderMessage);
+      
+      // Get the initial message from the AI service
+      const response = await this.ikigaiService.getInitialMessage();
+      
+      runInAction(() => {
+        // Find and replace the placeholder message
+        const index = this.messages.findIndex(msg => msg.id === placeholderId);
+        if (index !== -1) {
+          this.messages[index] = {
+            id: placeholderId,
+            role: 'assistant',
+            content: response.content,
+            timestamp: new Date(),
+            isLoading: false
+          };
+        }
+        
+        this.isTyping = false;
+      });
+    } catch (error) {
+      // If there's an error, try again with a simpler request
+      console.error('Error initializing conversation:', error);
+      
+      try {
+        // Create a new placeholder for the retry attempt
+        const retryPlaceholderId = Date.now().toString();
+        const retryPlaceholderMessage = {
+          id: retryPlaceholderId,
+          role: 'assistant',
+          content: '',
+          timestamp: new Date(),
+          isLoading: true
+        };
+        
+        // Replace the existing placeholder or add a new one
+        runInAction(() => {
+          const existingIndex = this.messages.findIndex(msg => msg.isLoading);
+          if (existingIndex !== -1) {
+            this.messages[existingIndex] = retryPlaceholderMessage;
+          } else {
+            this.messages.push(retryPlaceholderMessage);
+          }
+        });
+        
+        // Try a simpler approach to get the initial message
+        const response = await this.ikigaiService.getSimpleInitialMessage();
+        
+        runInAction(() => {
+          // Find and replace the placeholder message
+          const index = this.messages.findIndex(msg => msg.id === retryPlaceholderId);
+          if (index !== -1) {
+            this.messages[index] = {
+              id: retryPlaceholderId,
+              role: 'assistant',
+              content: response.content,
+              timestamp: new Date(),
+              isLoading: false
+            };
+          }
+          
+          this.isTyping = false;
+        });
+      } catch (retryError) {
+        // If all else fails, clear the messages to prevent showing a bad first message
+        runInAction(() => {
+          // Remove any loading messages
+          this.messages = this.messages.filter(msg => !msg.isLoading);
+          this.isTyping = false;
+          this.error = 'Failed to initialize conversation. Please refresh the page or try again later.';
+        });
+      }
+    }
   };
   
   /**

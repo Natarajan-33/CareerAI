@@ -19,6 +19,8 @@ const IkigaiPage = observer(() => {
     scrollToBottom();
   }, [ikigaiStore.messages]);
   
+  // No automatic initialization - let the user start the conversation
+  
   const handleSendMessage = (content) => {
     ikigaiStore.addUserMessage(content);
   };
@@ -57,7 +59,7 @@ const IkigaiPage = observer(() => {
           </div>
           
           {/* Generate results button */}
-          {ikigaiStore.messages.length >= 6 && (
+          {ikigaiStore.messages.length >= 2 && (
             <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4">
               <Button
                 variant="secondary"
@@ -77,7 +79,7 @@ const IkigaiPage = observer(() => {
           <ChatInput
             onSendMessage={handleSendMessage}
             isTyping={ikigaiStore.isTyping}
-            placeholder="Share your interests, skills, or ask questions..."
+            placeholder="What excites you most about your future career? Share your thoughts to begin..."
           />
         </>
       )}

@@ -1,5 +1,6 @@
 import { makeAutoObservable, runInAction } from 'mobx';
 import { AuthService } from '../services/AuthService.js';
+import { supabase } from '../services/SupabaseClient.js';
 
 export class AuthStore {
   constructor(rootStore) {
@@ -14,22 +15,39 @@ export class AuthStore {
     
     makeAutoObservable(this, { rootStore: false, authService: false });
     
-    // Check for existing token on initialization
+    // Set up Supabase auth state change listener
+    this.setupAuthListener();
+    
+    // Check for existing session on initialization
     this.checkAuth();
   }
   
   /**
-   * Check if user is already authenticated
+   * Set up Supabase auth state change listener
    */
-  checkAuth = async () => {
-    const token = localStorage.getItem('token');
-    if (!token) return;
-    
-    this.isLoading = true;
-    
+  setupAuthListener = () => {
+    supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' && session) {
+        // User has signed in
+        this.fetchUserProfile();
+      } else if (event === 'SIGNED_OUT') {
+        // User has signed out
+        runInAction(() => {
+          this.user = null;
+          this.isAuthenticated = false;
+        });
+      } else if (event === 'USER_UPDATED') {
+        // User data has been updated
+        this.fetchUserProfile();
+      }
+    });
+  };
+  
+  /**
+   * Fetch user profile from Supabase
+   */
+  fetchUserProfile = async () => {
     try {
-      // In a real implementation, this would validate the token with the backend
-      // and fetch the user profile
       const userData = await this.authService.getCurrentUser();
       
       runInAction(() => {
@@ -38,10 +56,34 @@ export class AuthStore {
         this.isLoading = false;
       });
     } catch (error) {
+      console.error('Error fetching user profile:', error);
+      runInAction(() => {
+        this.isLoading = false;
+        this.error = error.message;
+      });
+    }
+  };
+  
+  /**
+   * Check if user is already authenticated
+   */
+  checkAuth = async () => {
+    this.isLoading = true;
+    
+    try {
+      const { data } = await supabase.auth.getSession();
+      
+      if (data?.session) {
+        await this.fetchUserProfile();
+      } else {
+        runInAction(() => {
+          this.isLoading = false;
+        });
+      }
+    } catch (error) {
       runInAction(() => {
         this.isLoading = false;
         this.error = 'Authentication failed';
-        localStorage.removeItem('token');
       });
     }
   };
@@ -55,8 +97,6 @@ export class AuthStore {
     
     try {
       const { token, user } = await this.authService.login(email, password);
-      
-      localStorage.setItem('token', token);
       
       runInAction(() => {
         this.user = user;
@@ -83,13 +123,45 @@ export class AuthStore {
     this.error = null;
     
     try {
-      const { token, user } = await this.authService.register(userData);
+      const result = await this.authService.register(userData);
       
-      localStorage.setItem('token', token);
+      // Handle email confirmation case
+      if (result.message && !result.token) {
+        runInAction(() => {
+          this.isLoading = false;
+        });
+        return { success: true, message: result.message };
+      }
       
       runInAction(() => {
-        this.user = user;
+        this.user = result.user;
         this.isAuthenticated = true;
+        this.isLoading = false;
+      });
+      
+      return { success: true };
+    } catch (error) {
+      runInAction(() => {
+        this.isLoading = false;
+        this.error = error.message || 'Registration failed';
+      });
+      
+      return { success: false, error: this.error };
+    }
+  };
+  
+  /**
+   * Logout user
+   */
+  logout = async () => {
+    this.isLoading = true;
+    
+    try {
+      await this.authService.logout();
+      
+      runInAction(() => {
+        this.user = null;
+        this.isAuthenticated = false;
         this.isLoading = false;
       });
       
@@ -97,23 +169,11 @@ export class AuthStore {
     } catch (error) {
       runInAction(() => {
         this.isLoading = false;
-        this.error = error.message || 'Registration failed';
+        this.error = error.message || 'Logout failed';
       });
       
       return false;
     }
-  };
-  
-  /**
-   * Logout user
-   */
-  logout = () => {
-    localStorage.removeItem('token');
-    
-    runInAction(() => {
-      this.user = null;
-      this.isAuthenticated = false;
-    });
   };
   
   /**
@@ -141,6 +201,56 @@ export class AuthStore {
       });
       
       return false;
+    }
+  };
+  
+  /**
+   * Request password reset
+   */
+  resetPassword = async (email) => {
+    this.isLoading = true;
+    this.error = null;
+    
+    try {
+      const result = await this.authService.resetPassword(email);
+      
+      runInAction(() => {
+        this.isLoading = false;
+      });
+      
+      return { success: true, message: result.message };
+    } catch (error) {
+      runInAction(() => {
+        this.isLoading = false;
+        this.error = error.message || 'Password reset failed';
+      });
+      
+      return { success: false, error: this.error };
+    }
+  };
+  
+  /**
+   * Set new password after reset
+   */
+  setNewPassword = async (newPassword) => {
+    this.isLoading = true;
+    this.error = null;
+    
+    try {
+      const result = await this.authService.setNewPassword(newPassword);
+      
+      runInAction(() => {
+        this.isLoading = false;
+      });
+      
+      return { success: true, message: result.message };
+    } catch (error) {
+      runInAction(() => {
+        this.isLoading = false;
+        this.error = error.message || 'Password update failed';
+      });
+      
+      return { success: false, error: this.error };
     }
   };
   

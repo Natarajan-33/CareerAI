@@ -1,21 +1,33 @@
-import { ApiService } from './ApiService.js';
+import { supabase } from './SupabaseClient.js';
 
 /**
- * Service for handling authentication-related API calls
+ * Service for handling authentication-related operations using Supabase
  */
-export class AuthService extends ApiService {
+export class AuthService {
   /**
-   * Login user
+   * Login user with email and password
    */
   async login(email, password) {
     try {
-      const response = await this.post('/auth/token', {
-        username: email, // OAuth2 compatible format expects 'username'
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
         password,
       });
-      return response;
+      
+      if (error) throw error;
+      
+      return {
+        token: data.session.access_token,
+        user: {
+          id: data.user.id,
+          email: data.user.email,
+          name: data.user.user_metadata?.name || 'User',
+          skillLevel: data.user.user_metadata?.skill_level || 'beginner',
+          profileType: data.user.user_metadata?.profile_type || 'professional',
+        }
+      };
     } catch (error) {
-      throw new Error(error.response?.data?.detail || 'Login failed');
+      throw new Error(error.message || 'Login failed');
     }
   }
 
@@ -24,10 +36,46 @@ export class AuthService extends ApiService {
    */
   async register(userData) {
     try {
-      const response = await this.post('/auth/signup', userData);
-      return response;
+      const { data, error } = await supabase.auth.signUp({
+        email: userData.email,
+        password: userData.password,
+        options: {
+          data: {
+            name: userData.name,
+            skill_level: userData.skillLevel,
+            profile_type: userData.profileType,
+          }
+        }
+      });
+      
+      if (error) throw error;
+      
+      // If email confirmation is required, the session might be null
+      if (!data.session) {
+        return {
+          message: 'Please check your email for confirmation link',
+          user: {
+            id: data.user.id,
+            email: data.user.email,
+            name: userData.name,
+            skillLevel: userData.skillLevel,
+            profileType: userData.profileType,
+          }
+        };
+      }
+      
+      return {
+        token: data.session.access_token,
+        user: {
+          id: data.user.id,
+          email: data.user.email,
+          name: userData.name,
+          skillLevel: userData.skillLevel,
+          profileType: userData.profileType,
+        }
+      };
     } catch (error) {
-      throw new Error(error.response?.data?.detail || 'Registration failed');
+      throw new Error(error.message || 'Registration failed');
     }
   }
 
@@ -36,17 +84,20 @@ export class AuthService extends ApiService {
    */
   async getCurrentUser() {
     try {
-      // This is a placeholder - in a real implementation, you would have an endpoint to get the user profile
-      // For now, we'll simulate it with a mock user
+      const { data, error } = await supabase.auth.getUser();
+      
+      if (error) throw error;
+      if (!data.user) throw new Error('No user found');
+      
       return {
-        id: 'user-1',
-        email: 'user@example.com',
-        name: 'Test User',
-        skillLevel: 'intermediate',
-        profileType: 'professional',
+        id: data.user.id,
+        email: data.user.email,
+        name: data.user.user_metadata?.name || 'User',
+        skillLevel: data.user.user_metadata?.skill_level || 'beginner',
+        profileType: data.user.user_metadata?.profile_type || 'professional',
       };
     } catch (error) {
-      throw new Error(error.response?.data?.detail || 'Failed to get user profile');
+      throw new Error(error.message || 'Failed to get user profile');
     }
   }
 
@@ -55,28 +106,72 @@ export class AuthService extends ApiService {
    */
   async updateProfile(userData) {
     try {
-      // This is a placeholder - in a real implementation, you would have an endpoint to update the user profile
+      const { data, error } = await supabase.auth.updateUser({
+        data: {
+          name: userData.name,
+          skill_level: userData.skillLevel,
+          profile_type: userData.profileType,
+        }
+      });
+      
+      if (error) throw error;
+      
       return {
-        id: 'user-1',
-        email: userData.email || 'user@example.com',
-        name: userData.name || 'Test User',
-        skillLevel: userData.skillLevel || 'intermediate',
-        profileType: userData.profileType || 'professional',
+        id: data.user.id,
+        email: data.user.email,
+        name: data.user.user_metadata?.name,
+        skillLevel: data.user.user_metadata?.skill_level,
+        profileType: data.user.user_metadata?.profile_type,
       };
     } catch (error) {
-      throw new Error(error.response?.data?.detail || 'Failed to update profile');
+      throw new Error(error.message || 'Failed to update profile');
     }
   }
 
   /**
-   * Refresh token
+   * Logout user
    */
-  async refreshToken(token) {
+  async logout() {
     try {
-      const response = await this.post('/auth/refresh-token', { token });
-      return response;
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      return true;
     } catch (error) {
-      throw new Error(error.response?.data?.detail || 'Failed to refresh token');
+      throw new Error(error.message || 'Logout failed');
+    }
+  }
+
+  /**
+   * Reset password
+   */
+  async resetPassword(email) {
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      
+      if (error) throw error;
+      
+      return { message: 'Password reset email sent' };
+    } catch (error) {
+      throw new Error(error.message || 'Failed to send password reset email');
+    }
+  }
+
+  /**
+   * Set new password after reset
+   */
+  async setNewPassword(newPassword) {
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword
+      });
+      
+      if (error) throw error;
+      
+      return { message: 'Password updated successfully' };
+    } catch (error) {
+      throw new Error(error.message || 'Failed to update password');
     }
   }
 }

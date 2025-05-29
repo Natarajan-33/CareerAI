@@ -15,6 +15,10 @@ import { rootStore, RootStoreProvider } from './stores/index.js';
 // Import animation library
 import { motion } from 'framer-motion';
 
+// Import auth pages
+import LoginPage from './modules/auth/LoginPage';
+import RegisterPage from './modules/auth/RegisterPage';
+
 // Animation variants for page transitions
 const pageVariants = {
   initial: { opacity: 0, y: 20 },
@@ -170,8 +174,8 @@ const TargetFirmsPage = () => (
   </PageWrapper>
 );
 
-// Auth pages
-const LoginPage = () => (
+// Auth page placeholders (renamed to avoid conflicts with imported components)
+const LoginPagePlaceholder = () => (
   <PageWrapper title="Login">
     <motion.p 
       initial={{ opacity: 0 }}
@@ -184,7 +188,7 @@ const LoginPage = () => (
   </PageWrapper>
 );
 
-const RegisterPage = () => (
+const RegisterPagePlaceholder = () => (
   <PageWrapper title="Register">
     <motion.p 
       initial={{ opacity: 0 }}

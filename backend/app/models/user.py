@@ -1,5 +1,6 @@
 from pydantic import BaseModel, EmailStr, Field
-from typing import Optional
+from typing import Optional, Dict, Any
+from datetime import datetime
 
 
 class UserBase(BaseModel):
@@ -19,6 +20,19 @@ class UserUpdate(BaseModel):
     skill_level: Optional[str] = None
     profile_type: Optional[str] = None
     password: Optional[str] = None
+
+
+class UserInDB(UserBase):
+    id: str
+    hashed_password: str
+    created_at: datetime = Field(default_factory=datetime.now)
+    updated_at: Optional[datetime] = None
+    last_login: Optional[datetime] = None
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+    is_active: bool = True
+
+    class Config:
+        orm_mode = True
 
 
 class UserResponse(UserBase):

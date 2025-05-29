@@ -37,14 +37,19 @@ app.include_router(api_router, prefix=settings.API_V1_STR)
 async def startup_event():
     """Initialize services on application startup"""
     logger.info("Starting up CareerAI API...")
-    try:
-        # Initialize database
-        setup_db()
-        logger.info("Database setup complete")
-    except Exception as e:
-        logger.error(f"Error during startup: {e}")
-        logger.info("Continuing without database connection for testing purposes")
-        # Continue without database connection for testing purposes
+    
+    # Skip database setup entirely
+    logger.info("Skipping database setup as requested")
+    
+    # You can uncomment the following code if you want to use the database in the future
+    # try:
+    #     # Initialize database
+    #     setup_db()
+    #     logger.info("Database setup complete")
+    # except Exception as e:
+    #     logger.error(f"Error during startup: {e}")
+    #     logger.info("Continuing without database connection for testing purposes")
+    #     # Continue without database connection for testing purposes
 
 
 @app.get("/")

@@ -18,13 +18,13 @@ const ChatBubble = ({ message, animate = false }) => {
         {animate ? (
           <TypeAnimation
             sequence={[message.content]}
-            wrapper="p"
+            wrapper="div"
             speed={70}
             cursor={false}
-            className="text-sm"
+            className="text-sm whitespace-pre-line"
           />
         ) : (
-          <p className="text-sm">{message.content}</p>
+          <div className="text-sm whitespace-pre-line">{message.content}</div>
         )}
         <p className="text-xs mt-1 opacity-70 text-right">
           {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
