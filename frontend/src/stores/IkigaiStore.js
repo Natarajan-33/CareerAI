@@ -97,12 +97,18 @@ export class IkigaiStore {
   };
   
   /**
-   * Generate Ikigai results based on conversation
+   * Generate Ikigai results based on conversation history
    */
   generateIkigaiResults = async () => {
+    // Ensure we have enough messages for a meaningful analysis
     if (this.messages.length < 5) {
       this.error = 'Please have a longer conversation to generate accurate results';
       return false;
+    }
+    
+    // Check if the first message is from the user
+    if (this.messages.length > 0 && this.messages[0].role !== 'user') {
+      console.warn('First message is not from user - this may affect analysis quality');
     }
     
     this.isLoading = true;
@@ -124,6 +130,7 @@ export class IkigaiStore {
         payload.conversation_id = this.conversationId;
       }
       
+      // Generate Ikigai results based on the conversation history
       const result = await this.ikigaiService.generateIkigai(payload);
       
       runInAction(() => {
@@ -197,94 +204,54 @@ export class IkigaiStore {
   };
   
   /**
-   * Initialize the conversation with an AI message
+   * Initialize the conversation - no longer adds an initial AI message
+   * The first message should always be from the user
    */
-  initializeConversation = async () => {
-    this.isTyping = true;
+  initializeConversation = () => {
+    // Clear any existing messages
+    this.messages = [];
+    this.isTyping = false;
+    this.error = null;
+    
+    // We no longer automatically add an assistant message at the beginning
+    // The conversation will start when the user sends their first message
+    console.log('Conversation initialized - waiting for user to start the conversation');
+  };
+  
+  /**
+   * Save the Ikigai result to the database
+   */
+  saveIkigaiResult = async () => {
+    if (!this.ikigaiResult) {
+      this.error = 'No Ikigai result to save';
+      return false;
+    }
+    
+    if (!this.rootStore.authStore.isAuthenticated) {
+      this.error = 'You must be logged in to save results';
+      return false;
+    }
+    
+    this.isLoading = true;
+    this.error = null;
     
     try {
-      // Create a placeholder message to show loading state
-      const placeholderId = Date.now().toString();
-      const placeholderMessage = {
-        id: placeholderId,
-        role: 'assistant',
-        content: '',
-        timestamp: new Date(),
-        isLoading: true
-      };
-      
-      this.messages.push(placeholderMessage);
-      
-      // Get the initial message from the AI service
-      const response = await this.ikigaiService.getInitialMessage();
+      const userId = this.rootStore.authStore.user.id;
+      const saveResponse = await this.ikigaiService.saveIkigaiResult(userId, this.ikigaiResult);
       
       runInAction(() => {
-        // Find and replace the placeholder message
-        const index = this.messages.findIndex(msg => msg.id === placeholderId);
-        if (index !== -1) {
-          this.messages[index] = {
-            id: placeholderId,
-            role: 'assistant',
-            content: response.content,
-            timestamp: new Date(),
-            isLoading: false
-          };
-        }
-        
-        this.isTyping = false;
+        this.isLoading = false;
+        this.savedResultId = saveResponse.result_id;
       });
-    } catch (error) {
-      // If there's an error, try again with a simpler request
-      console.error('Error initializing conversation:', error);
       
-      try {
-        // Create a new placeholder for the retry attempt
-        const retryPlaceholderId = Date.now().toString();
-        const retryPlaceholderMessage = {
-          id: retryPlaceholderId,
-          role: 'assistant',
-          content: '',
-          timestamp: new Date(),
-          isLoading: true
-        };
-        
-        // Replace the existing placeholder or add a new one
-        runInAction(() => {
-          const existingIndex = this.messages.findIndex(msg => msg.isLoading);
-          if (existingIndex !== -1) {
-            this.messages[existingIndex] = retryPlaceholderMessage;
-          } else {
-            this.messages.push(retryPlaceholderMessage);
-          }
-        });
-        
-        // Try a simpler approach to get the initial message
-        const response = await this.ikigaiService.getSimpleInitialMessage();
-        
-        runInAction(() => {
-          // Find and replace the placeholder message
-          const index = this.messages.findIndex(msg => msg.id === retryPlaceholderId);
-          if (index !== -1) {
-            this.messages[index] = {
-              id: retryPlaceholderId,
-              role: 'assistant',
-              content: response.content,
-              timestamp: new Date(),
-              isLoading: false
-            };
-          }
-          
-          this.isTyping = false;
-        });
-      } catch (retryError) {
-        // If all else fails, clear the messages to prevent showing a bad first message
-        runInAction(() => {
-          // Remove any loading messages
-          this.messages = this.messages.filter(msg => !msg.isLoading);
-          this.isTyping = false;
-          this.error = 'Failed to initialize conversation. Please refresh the page or try again later.';
-        });
-      }
+      return true;
+    } catch (error) {
+      runInAction(() => {
+        this.isLoading = false;
+        this.error = error.message || 'Failed to save Ikigai result';
+      });
+      
+      return false;
     }
   };
   

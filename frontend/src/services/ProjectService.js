@@ -17,6 +17,18 @@ export class ProjectService extends ApiService {
   }
 
   /**
+   * Generate domains based on ikigai summary
+   */
+  async generateDomains(ikigaiSummary) {
+    try {
+      const response = await this.post('/projects/domains/generate', { ikigai_summary: ikigaiSummary });
+      return response;
+    } catch (error) {
+      throw new Error(error.response?.data?.detail || 'Failed to generate domains');
+    }
+  }
+
+  /**
    * Get a specific domain by ID
    */
   async getDomain(domainId) {

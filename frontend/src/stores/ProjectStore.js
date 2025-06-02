@@ -13,8 +13,12 @@ export class ProjectStore {
     this.selectedProject = null;
     this.isLoading = false;
     this.error = null;
+    this.ikigaiSummary = '';
     
     makeAutoObservable(this, { rootStore: false, projectService: false });
+    
+    // Load domains from session storage if available
+    this.loadDomainsFromSessionStorage();
   }
   
   /**
@@ -36,6 +40,85 @@ export class ProjectStore {
         this.isLoading = false;
         this.error = error.message || 'Failed to load domains';
       });
+    }
+  };
+  
+  /**
+   * Load domains from session storage
+   */
+  loadDomainsFromSessionStorage = () => {
+    try {
+      const storedDomains = sessionStorage.getItem('generatedDomains');
+      const storedIkigaiSummary = sessionStorage.getItem('ikigaiSummary');
+      
+      if (storedDomains) {
+        this.domains = JSON.parse(storedDomains);
+      }
+      
+      if (storedIkigaiSummary) {
+        this.ikigaiSummary = storedIkigaiSummary;
+      }
+    } catch (error) {
+      console.error('Error loading domains from session storage:', error);
+    }
+  };
+  
+  /**
+   * Save domains to session storage
+   */
+  saveDomainsToSessionStorage = (domains, ikigaiSummary) => {
+    try {
+      sessionStorage.setItem('generatedDomains', JSON.stringify(domains));
+      sessionStorage.setItem('ikigaiSummary', ikigaiSummary);
+    } catch (error) {
+      console.error('Error saving domains to session storage:', error);
+    }
+  };
+  
+  /**
+   * Clear domains from session storage
+   */
+  clearDomainsFromSessionStorage = () => {
+    try {
+      sessionStorage.removeItem('generatedDomains');
+      sessionStorage.removeItem('ikigaiSummary');
+      
+      runInAction(() => {
+        this.domains = [];
+        this.ikigaiSummary = '';
+      });
+    } catch (error) {
+      console.error('Error clearing domains from session storage:', error);
+    }
+  };
+  
+  /**
+   * Generate domains based on ikigai summary
+   */
+  generateDomains = async (ikigaiSummary) => {
+    this.isLoading = true;
+    this.error = null;
+    
+    try {
+      const domains = await this.projectService.generateDomains(ikigaiSummary);
+      
+      runInAction(() => {
+        this.domains = domains;
+        this.ikigaiSummary = ikigaiSummary;
+        this.isLoading = false;
+      });
+      
+      // Save domains and ikigai summary to session storage
+      this.saveDomainsToSessionStorage(domains, ikigaiSummary);
+      
+      return true;
+    } catch (error) {
+      runInAction(() => {
+        this.isLoading = false;
+        this.error = error.message || 'Failed to generate domains';
+      });
+      
+      return false;
     }
   };
   

@@ -1,15 +1,47 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { observer } from 'mobx-react-lite';
+import { useIkigaiStore, useAuthStore } from '../../stores/RootStore.js';
 import Button from '../../components/Button.jsx';
 import Card from '../../components/Card.jsx';
 
 const IkigaiResults = observer(({ result, onReset }) => {
   const navigate = useNavigate();
+  const ikigaiStore = useIkigaiStore();
+  const authStore = useAuthStore();
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [saveError, setSaveError] = useState(null);
   
   // Navigate to domain selection
   const handleProceedToExecution = () => {
     navigate('/domains');
+  };
+  
+  // Save ikigai result
+  const handleSaveResult = async () => {
+    if (!authStore.isAuthenticated) {
+      setSaveError('You must be logged in to save results');
+      return;
+    }
+    
+    setIsSaving(true);
+    setSaveSuccess(false);
+    setSaveError(null);
+    
+    try {
+      const success = await ikigaiStore.saveIkigaiResult();
+      setIsSaving(false);
+      
+      if (success) {
+        setSaveSuccess(true);
+      } else {
+        setSaveError(ikigaiStore.error || 'Failed to save result');
+      }
+    } catch (error) {
+      setIsSaving(false);
+      setSaveError(error.message || 'An unexpected error occurred');
+    }
   };
   
   // Get sentiment color
@@ -174,11 +206,34 @@ const IkigaiResults = observer(({ result, onReset }) => {
         </div>
       </div>
       
+      {/* Save status messages */}
+      {saveSuccess && (
+        <div className="mb-6 p-4 bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 rounded-lg text-center">
+          <p className="font-medium">Your Ikigai results have been saved successfully!</p>
+        </div>
+      )}
+      
+      {saveError && (
+        <div className="mb-6 p-4 bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 rounded-lg text-center">
+          <p className="font-medium">{saveError}</p>
+        </div>
+      )}
+      
       {/* Action buttons */}
       <div className="flex flex-col md:flex-row justify-center space-y-4 md:space-y-0 md:space-x-4">
         <Button variant="outline" onClick={onReset}>
           Restart Conversation
         </Button>
+        
+        <Button 
+          variant="secondary" 
+          onClick={handleSaveResult} 
+          isLoading={isSaving}
+          disabled={isSaving || saveSuccess}
+        >
+          {saveSuccess ? 'Saved' : 'Save Results'}
+        </Button>
+        
         <Button variant="primary" onClick={handleProceedToExecution}>
           Proceed to Execution Hub
         </Button>

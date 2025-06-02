@@ -1,11 +1,13 @@
 import os
 import json
 import re
+import uuid
 from typing import List, Dict, Any, Optional
 
 from groq import Groq
 from app.core.config import settings
 from app.models.ikigai import ChatMessage, SentimentAnalysis, IkigaiResponse
+from app.db.supabase import get_supabase_client
 
 
 def remove_think_tags(text):
@@ -24,8 +26,21 @@ class AIService:
         self.client = Groq(api_key=settings.GROQ_API_KEY)
     
     async def generate_chat_response(self, messages: List[ChatMessage]) -> ChatMessage:
-        """Generate a response from the AI assistant based on conversation history."""
-        # Convert our ChatMessage objects to the format expected by OpenAI
+        """Generate a response from the AI assistant based on conversation history.
+        
+        This function is only called after the user has sent a message, ensuring that
+        the first message is always from the user and the LLM is only called when needed.
+        """
+        # Ensure we have at least one user message before generating a response
+        if not messages or len(messages) == 0:
+            print("No messages provided for chat response generation")
+            return ChatMessage(
+                role="assistant",
+                content="Hello! I'm your Ikigai career guide. Please share a bit about yourself and your career interests to get started.",
+                sentiment=None
+            )
+        
+        # Convert our ChatMessage objects to the format expected by the LLM
         openai_messages = [
             {"role": msg.role, "content": msg.content}
             for msg in messages
@@ -48,7 +63,7 @@ class AIService:
 
             Your goals:
             1. Build rapport and trust with the user through friendly and engaging questions.
-            2. Ask at least 15 open-ended questions (with follow-up questions when needed) in a natural flow. The goal is to understand:
+            2. Ask open-ended questions (with follow-up questions when needed) in a natural flow. Keep your responses concise and focused. The goal is to understand:
                - Childhood hobbies and interests
                - Current passions and joyful activities
                - Skills and strengths (natural and learned)
@@ -86,6 +101,7 @@ class AIService:
             openai_messages.insert(0, {"role": "system", "content": ikigai_system_prompt})
         
         try:
+            # Only make the LLM call if we have a user message to respond to
             response = self.client.chat.completions.create(
                 model="deepseek-r1-distill-llama-70b",
                 messages=openai_messages,
@@ -151,48 +167,57 @@ class AIService:
             )
     
     async def generate_ikigai(self, conversation_history: List[ChatMessage]) -> IkigaiResponse:
-        """Generate Ikigai results based on conversation history."""
-        # Convert our ChatMessage objects to the format expected by OpenAI
+        """Generate Ikigai results based on conversation history.
+        
+        This function analyzes the entire conversation history to generate personalized Ikigai results.
+        It provides a simplified and more reliable response format.
+        """
+        # Ensure we have conversation history to analyze
+        if not conversation_history or len(conversation_history) < 2:
+            print("Insufficient conversation history for Ikigai analysis")
+            return self._create_default_ikigai_response()
+            
+        # Convert our ChatMessage objects to the format expected by the LLM
         openai_messages = [
             {"role": msg.role, "content": msg.content}
             for msg in conversation_history
         ]
         
-        # Add the system prompt for Ikigai analysis
+        # Add the system prompt for Ikigai analysis - simplified for reliability
         ikigai_system_prompt = """
         You are an expert Ikigai career guide chatbot.
 
-        Your job is to help a user discover their Ikigai (reason for being) by engaging in a natural, personalized, and conversational dialogue. You should act like a career coach who is deeply trained in the Ikigai framework and also aware of global trends in skills, jobs, and industries.
+        Your job is to analyze the provided conversation history and identify the user's Ikigai (reason for being).
+        You should act like a career coach who is deeply trained in the Ikigai framework and also aware of global trends in skills, jobs, and industries.
 
-        Based on the conversation history provided, analyze:
-        1. What they love
-        2. What they are good at
-        3. What the world needs
-        4. What they can be paid for
+        Based on the conversation history provided, carefully analyze:
+        1. What they love (their passions and interests)
+        2. What they are good at (their skills and strengths)
+        3. What the world needs (market demands and societal needs)
+        4. What they can be paid for (viable career options)
 
         Then provide:
-        - Their likely Ikigai
+        - Their likely Ikigai - the intersection of all four elements above
         - A career domain that fits their Ikigai (e.g., AI, marketing, design, education, environment, tech, social impact, etc.)
-        - Justify why you chose this domain with references to their answers
-        - Predict future job demand for this domain (based on trends and logical reasoning)
-        - Suggest 10-15 specific projects in that domain to help them become job-ready (real-world, practical, and skill-building)
+        - Suggest 3-5 specific projects in that domain to help them become job-ready (real-world, practical, and skill-building)
 
         Format your response as a structured JSON object with the following fields:
-        - passion: A string describing what they love
-        - strengths: An array of strings listing what they're good at
-        - ai_suggestion: A string with their likely Ikigai career path
-        - domains: An array of domain objects, each with id, name, description, match_score, and required_skills
-        - projects: An array of project suggestions for their chosen domain
-        - sentiment: An object with overall sentiment scores
+        - passion: A string describing what they love (keep this concise, 1-2 sentences)
+        - strengths: An array of strings listing what they're good at (limit to 3-5 key strengths)
+        - ai_suggestion: A string with their likely Ikigai career path (keep this concise, 1-2 sentences)
+        - domains: An array with just one domain object containing: id, name, description, match_score, and required_skills
+        - projects: An array of 3-5 project suggestions for their chosen domain (keep each project description short and actionable)
+        - sentiment: An object with overall sentiment scores (overall, confidence, excitement)
         """
         
         openai_messages.insert(0, {"role": "system", "content": ikigai_system_prompt})
         
         try:
+            # Use a more reliable model with a lower temperature for more consistent outputs
             response = self.client.chat.completions.create(
                 model="deepseek-r1-distill-llama-70b",
                 messages=openai_messages,
-                temperature=0.7
+                temperature=0.5  # Lower temperature for more consistent results
             )
             
             # Extract the assistant's response and remove think tags
@@ -201,31 +226,46 @@ class AIService:
             # Parse the JSON response
             import json
             try:
-                # Make sure content is valid JSON
-                result = json.loads(content)
+                # Try to extract JSON from the content if it's not already valid JSON
+                # This handles cases where the LLM might wrap the JSON in markdown or add extra text
+                json_match = re.search(r'```json\s*([\s\S]*?)\s*```|\{[\s\S]*\}', content)
+                if json_match:
+                    json_content = json_match.group(1) if json_match.group(1) else json_match.group(0)
+                    # Clean up any remaining markdown or extra characters
+                    json_content = re.sub(r'^```json\s*|\s*```$', '', json_content)
+                    # Try to parse the extracted JSON
+                    result = json.loads(json_content)
+                else:
+                    # If no JSON pattern found, try parsing the whole content
+                    result = json.loads(content)
                 
-                # Extract domains from the result
+                # Create a default domain if none is provided
+                default_domain = {
+                    "id": "default_domain",
+                    "name": result.get("ai_suggestion", "Career Path"),
+                    "description": f"Career path in {result.get('ai_suggestion', 'your field of interest')}",
+                    "match_score": 0.9,
+                    "required_skills": result.get("strengths", [])
+                }
+                
+                # Extract domains from the result or use default
                 domains = []
-                for i, domain in enumerate(result.get("domains", [])):
-                    domains.append({
-                        "id": domain.get("id", f"domain_{i}"),
-                        "name": domain.get("name", "Unknown Domain"),
-                        "description": domain.get("description", "No description available"),
-                        "match_score": domain.get("match_score", 0.7),
-                        "required_skills": domain.get("required_skills", [])
-                    })
+                if "domains" in result and isinstance(result["domains"], list) and len(result["domains"]) > 0:
+                    for i, domain in enumerate(result["domains"]):
+                        if isinstance(domain, dict):
+                            domains.append({
+                                "id": domain.get("id", f"domain_{i}"),
+                                "name": domain.get("name", "Unknown Domain"),
+                                "description": domain.get("description", "No description available"),
+                                "match_score": domain.get("match_score", 0.7),
+                                "required_skills": domain.get("required_skills", [])
+                            })
                 
-                # If no domains were provided, create a default one
-                if not domains and result.get("ai_suggestion"):
-                    domains.append({
-                        "id": "default_domain",
-                        "name": result.get("ai_suggestion"),
-                        "description": f"Career path in {result.get('ai_suggestion')}",
-                        "match_score": 0.9,
-                        "required_skills": result.get("strengths", [])
-                    })
+                # If no valid domains were found, use the default domain
+                if not domains:
+                    domains.append(default_domain)
                 
-                # Create sentiment summary
+                # Create sentiment summary with default values if not provided
                 sentiment = result.get("sentiment", {})
                 sentiment_summary = {
                     "overall": sentiment.get("overall", 0.7),
@@ -233,17 +273,26 @@ class AIService:
                     "excitement": sentiment.get("excitement", 0.75)
                 }
                 
-                return IkigaiResponse(
+                # Ensure we have projects, even if empty
+                projects = result.get("projects", [])
+                if not isinstance(projects, list):
+                    projects = []
+                
+                # Create the Ikigai response
+                ikigai_response = IkigaiResponse(
                     passion=result.get("passion", "No passion identified"),
                     strengths=result.get("strengths", []),
                     ai_suggestion=result.get("ai_suggestion", "No suggestion available"),
                     domains=domains,
                     sentiment=sentiment_summary,
-                    projects=result.get("projects", [])
+                    projects=projects
                 )
                 
+                print(f"Successfully generated Ikigai response with {len(domains)} domains and {len(projects)} projects")
+                return ikigai_response
+                
             except json.JSONDecodeError:
-                # If JSON parsing fails, create a default response
+                # If JSON parsing fails, log the error and content
                 print(f"Error parsing JSON response: {content}")
                 return self._create_default_ikigai_response()
             
@@ -252,40 +301,184 @@ class AIService:
             return self._create_default_ikigai_response()
     
     def _create_default_ikigai_response(self) -> IkigaiResponse:
-        """Create a default Ikigai response when analysis fails."""
+        """Create a default Ikigai response when analysis fails.
+        
+        This is only used as a fallback when the actual analysis cannot be completed.
+        """
         return IkigaiResponse(
-            passion="Building AI systems that solve real-world problems",
-            strengths=["Problem solving", "Logical thinking", "Programming"],
-            ai_suggestion="Machine Learning Engineering",
+            passion="Unable to determine passion from conversation",
+            strengths=["Please continue the conversation to identify your strengths"],
+            ai_suggestion="More conversation needed for accurate suggestion",
             domains=[
                 {
-                    "id": "mlops",
-                    "name": "MLOps",
-                    "description": "Machine Learning Operations focuses on deploying and maintaining ML models in production.",
-                    "match_score": 0.92,
-                    "required_skills": ["Python", "Docker", "CI/CD", "Cloud Platforms"]
-                },
-                {
-                    "id": "nlp",
-                    "name": "Natural Language Processing",
-                    "description": "NLP focuses on enabling computers to understand and process human language.",
-                    "match_score": 0.85,
-                    "required_skills": ["Python", "Linguistics", "Deep Learning", "Transformers"]
+                    "id": "more_data_needed",
+                    "name": "More Conversation Needed",
+                    "description": "We need more conversation data to provide accurate domain recommendations.",
+                    "match_score": 0.5,
+                    "required_skills": ["Continue conversation to identify skills"]
                 }
             ],
             sentiment={
-                "overall": 0.8,
-                "confidence": 0.9,
-                "excitement": 0.85
+                "overall": 0.5,
+                "confidence": 0.5,
+                "excitement": 0.5
             },
             projects=[
-                "Build a sentiment analysis model",
-                "Create a chatbot with NLP capabilities",
-                "Develop a recommendation system",
-                "Implement a CI/CD pipeline for ML models",
-                "Create a data visualization dashboard"
+                "Continue the conversation to get personalized project recommendations"
             ]
         )
+    
+    async def save_ikigai_result(self, user_id: str, ikigai_result: IkigaiResponse) -> Dict[str, Any]:
+        """Save the Ikigai result to the database.
+        
+        Args:
+            user_id: The ID of the user to save the result for
+            ikigai_result: The Ikigai result to save
+            
+        Returns:
+            A dictionary with the save status and the saved result ID
+        """
+        try:
+            # Get Supabase client
+            supabase = get_supabase_client()
+            if not supabase:
+                return {"success": False, "error": "Database connection failed", "id": None}
+            
+            # Generate a unique ID for the result
+            result_id = str(uuid.uuid4())
+            
+            # Convert the Ikigai result to a dictionary
+            result_data = {
+                "id": result_id,
+                "user_id": user_id,
+                "created_at": "now()",  # Supabase will convert this to the current timestamp
+                "passion": ikigai_result.passion,
+                "strengths": ikigai_result.strengths,
+                "ai_suggestion": ikigai_result.ai_suggestion,
+                "domains": ikigai_result.domains,
+                "sentiment": ikigai_result.sentiment,
+                "projects": ikigai_result.projects
+            }
+            
+            # Insert the result into the database
+            response = supabase.table("ikigai_results").insert(result_data).execute()
+            
+            # Check if the insert was successful
+            if response.data and len(response.data) > 0:
+                return {"success": True, "id": result_id, "result": ikigai_result}
+            else:
+                return {"success": False, "error": "Failed to save result", "id": None}
+                
+        except Exception as e:
+            print(f"Error saving Ikigai result: {e}")
+            return {"success": False, "error": str(e), "id": None}
+    
+    async def generate_domains_from_ikigai(self, ikigai_summary: str) -> List[Dict[str, Any]]:
+        """Generate domain recommendations based on ikigai summary.
+        
+        Args:
+            ikigai_summary: A text summary of the user's ikigai profile
+            
+        Returns:
+            A list of domain objects with id, name, description, icon, color, required_skills, and job_titles
+        """
+        try:
+            # Prepare the prompt for domain generation
+            prompt = f"""Based on the following ikigai summary, generate 3-5 career domains that would be a good fit for this person.
+            For each domain, provide:
+            1. A unique ID (lowercase, no spaces)
+            2. A name for the domain
+            3. A detailed description of the domain and why it fits the person
+            4. An appropriate icon name (e.g., 'server', 'chat', 'eye', 'robot', 'code', 'chart', 'brain')
+            5. A color (e.g., 'blue', 'purple', 'green', 'orange', 'red', 'teal')
+            6. A list of 4-6 required skills for the domain
+            7. A list of 3-5 potential job titles in this domain
+            
+            Format your response as a valid JSON array of domain objects.
+            
+            Ikigai Summary:
+            {ikigai_summary}
+            """
+            
+            # Make the LLM call
+            response = self.client.chat.completions.create(
+                model="deepseek-r1-distill-llama-70b",
+                messages=[
+                    {"role": "system", "content": "You are an expert career counselor who specializes in matching people's skills and interests to appropriate career domains."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.7
+            )
+            
+            # Extract and parse the response
+            content = remove_think_tags(response.choices[0].message.content)
+            
+            # Try to extract JSON from the content
+            import json
+            import re
+            
+            # Look for JSON pattern in the response
+            json_match = re.search(r'```json\s*([\s\S]*?)\s*```|\{[\s\S]*\}|\[[\s\S]*\]', content)
+            if json_match:
+                json_content = json_match.group(1) if json_match.group(1) else json_match.group(0)
+                # Clean up any remaining markdown or extra characters
+                json_content = re.sub(r'^```json\s*|\s*```$', '', json_content)
+                # Parse the extracted JSON
+                domains = json.loads(json_content)
+            else:
+                # If no JSON pattern found, try parsing the whole content
+                domains = json.loads(content)
+            
+            # Ensure we have a list of domains
+            if not isinstance(domains, list):
+                if isinstance(domains, dict):
+                    # If we got a single domain object, wrap it in a list
+                    domains = [domains]
+                else:
+                    # If we got something else, return an empty list
+                    domains = []
+            
+            # Validate and clean up each domain
+            valid_domains = []
+            for i, domain in enumerate(domains):
+                if not isinstance(domain, dict):
+                    continue
+                
+                # Ensure all required fields are present
+                valid_domain = {
+                    "id": domain.get("id", f"domain_{i}"),
+                    "name": domain.get("name", "Unknown Domain"),
+                    "description": domain.get("description", "No description available"),
+                    "icon": domain.get("icon", "star"),
+                    "color": domain.get("color", "blue"),
+                    "required_skills": domain.get("required_skills", []),
+                    "job_titles": domain.get("job_titles", [])
+                }
+                
+                # Ensure lists are actually lists
+                if not isinstance(valid_domain["required_skills"], list):
+                    valid_domain["required_skills"] = []
+                if not isinstance(valid_domain["job_titles"], list):
+                    valid_domain["job_titles"] = []
+                
+                valid_domains.append(valid_domain)
+            
+            return valid_domains
+            
+        except Exception as e:
+            print(f"Error generating domains from ikigai: {e}")
+            # Return a default domain as fallback
+            return [
+                {
+                    "id": "default_domain",
+                    "name": "General AI/ML",
+                    "description": "A general domain covering various aspects of artificial intelligence and machine learning.",
+                    "icon": "brain",
+                    "color": "blue",
+                    "required_skills": ["Python", "Machine Learning", "Data Analysis", "Problem Solving"],
+                    "job_titles": ["AI Engineer", "ML Engineer", "Data Scientist"]
+                }
+            ]
     
     async def generate_social_post(self, project_info: Dict[str, Any], progress_info: Dict[str, Any], platform: str) -> str:
         """Generate a social media post based on project progress."""

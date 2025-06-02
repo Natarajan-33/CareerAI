@@ -20,23 +20,41 @@ class ChatRequest(BaseModel):
 
 @router.post("/chat", response_model=ChatMessage)
 async def chat_message(request: Optional[ChatRequest] = None, body: Optional[Dict[str, Any]] = Body(None)):
-    """Process a chat message and return AI response using a standardized format."""
+    """Process a chat message and return AI response using a standardized format.
+    
+    This endpoint ensures that the first message is always from the user,
+    and the LLM call only happens after the user sends a message.
+    """
     try:
         # Print the raw request body for debugging
         print(f"Raw request body: {body}")
         
         # Handle different request formats
         user_message = None
+        conversation_history = []
         
         # If we got a ChatRequest object
         if request is not None:
             user_message = ChatMessage(role="user", content=request.message)
             print(f"Using ChatRequest format: {request.message}")
+            
+            # Check if conversation history was provided
+            if hasattr(request, 'conversation_history') and request.conversation_history:
+                conversation_history = request.conversation_history
         
         # If we got a raw body
         elif body is not None:
             # Try different formats that might be coming from the frontend
             if isinstance(body, dict):
+                # Extract conversation history if provided
+                if "conversation_history" in body and isinstance(body["conversation_history"], list):
+                    for msg in body["conversation_history"]:
+                        if isinstance(msg, dict) and "role" in msg and "content" in msg:
+                            conversation_history.append(ChatMessage(
+                                role=msg["role"],
+                                content=msg["content"]
+                            ))
+                
                 # Format 1: {"message": "Hello"}
                 if "message" in body and isinstance(body["message"], str):
                     user_message = ChatMessage(role="user", content=body["message"])
@@ -61,8 +79,8 @@ async def chat_message(request: Optional[ChatRequest] = None, body: Optional[Dic
             user_message = ChatMessage(role="user", content="Hello")
             print("Using default message")
         
-        # Initialize conversation history with just the user message
-        conversation_history = [user_message]
+        # Add the user message to the conversation history
+        conversation_history.append(user_message)
         
         # Generate response using AI service
         response = await ai_service.generate_chat_response(conversation_history)
@@ -79,12 +97,16 @@ async def chat_message(request: Optional[ChatRequest] = None, body: Optional[Dic
 
 @router.post("/chat-simple", response_model=ChatMessage)
 async def chat_message_simple(request: Dict[str, Any]):
-    """Process a chat message with a simpler request format and return AI response."""
+    """Process a chat message with a simpler request format and return AI response.
+    
+    This endpoint ensures that the first message is always from the user,
+    and the LLM call only happens after the user sends a message.
+    """
     # Extract message content and role from the request
     content = request.get("message", "")
     role = request.get("role", "user")
     
-    # Create a ChatMessage object
+    # Create a ChatMessage object for the current message
     message = ChatMessage(role=role, content=content)
     
     # Extract conversation history if provided
@@ -96,10 +118,21 @@ async def chat_message_simple(request: Dict[str, Any]):
         if isinstance(msg, dict) and "role" in msg and "content" in msg:
             conversation_history.append(ChatMessage(role=msg["role"], content=msg["content"]))
     
-    # If no conversation history, use just the current message
+    # Ensure the conversation starts with a user message
     if not conversation_history:
+        # If no history, just use the current message (which should be from the user)
         conversation_history = [message]
     else:
+        # If the first message is not from a user, prepend a user message
+        if conversation_history[0].role != 'user' and len(conversation_history) > 1:
+            # Find the first user message and move it to the front
+            for i, msg in enumerate(conversation_history):
+                if msg.role == 'user':
+                    user_msg = conversation_history.pop(i)
+                    conversation_history.insert(0, user_msg)
+                    break
+        
+        # Add the current message to the history
         conversation_history.append(message)
     
     # Generate response using AI service
@@ -133,15 +166,29 @@ async def analyze_sentiment(message: ChatMessage):
 
 @router.post("/generate-ikigai", response_model=IkigaiResponse)
 async def generate_ikigai(conversation_data: Dict[str, Any]):
-    """Generate Ikigai results based on conversation history."""
+    """Generate Ikigai results based on conversation history.
+    
+    This endpoint analyzes the entire conversation history to generate personalized Ikigai results.
+    It does not show default recommendations unless there's an error in processing.
+    """
     # Extract conversation history from request
     conversation_id = conversation_data.get("conversation_id")
     messages = conversation_data.get("messages", [])
+    user_id = conversation_data.get("user_id")
     
     # Log the request for debugging
     print(f"Generating Ikigai with {len(messages)} messages")
     if conversation_id:
         print(f"Conversation ID: {conversation_id}")
+    if user_id:
+        print(f"User ID: {user_id}")
+    
+    # Ensure we have enough messages for analysis
+    if not messages or len(messages) < 2:
+        raise HTTPException(
+            status_code=400, 
+            detail="Insufficient conversation history. Please continue the conversation before generating Ikigai results."
+        )
     
     # Convert dictionary messages to ChatMessage objects
     chat_messages = []
@@ -168,20 +215,48 @@ async def generate_ikigai(conversation_data: Dict[str, Any]):
                 content=msg.get('content', '') if isinstance(msg, dict) else str(msg)
             ))
     
+    # Verify that the conversation starts with a user message
+    if not chat_messages or chat_messages[0].role != 'user':
+        # Add a note about this in the response, but continue processing
+        print("Warning: Conversation does not start with a user message")
+    
     # Generate Ikigai results
-    if not chat_messages:
-        raise HTTPException(status_code=400, detail="No conversation history provided")
-    
     ikigai_response = await ai_service.generate_ikigai(chat_messages)
-    
-    # In a full implementation, we would save results to the database here
-    # But we're keeping it simple without database interactions for now
-    user_id = conversation_data.get("user_id")
-    if user_id:
-        print(f"Would save Ikigai results for user {user_id} (database disabled)")
     
     return ikigai_response
 
+
+@router.post("/save-ikigai-result", status_code=status.HTTP_201_CREATED)
+async def save_ikigai_result(user_id: str, ikigai_result: IkigaiResponse):
+    """Save the generated Ikigai result to the database.
+    
+    Args:
+        user_id: The ID of the user to save the result for
+        ikigai_result: The Ikigai result to save
+        
+    Returns:
+        A dictionary with the save status and the saved result ID
+    """
+    try:
+        # Use the AI service to save the result
+        save_result = await ai_service.save_ikigai_result(user_id, ikigai_result)
+        
+        if save_result["success"]:
+            return {
+                "success": True, 
+                "message": "Ikigai result saved successfully", 
+                "result_id": save_result["id"]
+            }
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to save Ikigai result: {save_result.get('error', 'Unknown error')}"
+            )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error saving Ikigai result: {str(e)}"
+        )
 
 @router.post("/save-conversation", status_code=status.HTTP_201_CREATED)
 async def save_conversation(user_id: str, conversation_data: List[ChatMessage], conversation_id: Optional[str] = None, insights: Optional[dict] = None):

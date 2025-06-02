@@ -200,4 +200,20 @@ Keep everything focused on helping the user align with their Ikigai while also b
       throw new Error(error.response?.data?.detail || 'Failed to save conversation');
     }
   }
+  
+  /**
+   * Save Ikigai result to backend
+   */
+  async saveIkigaiResult(userId, ikigaiResult) {
+    try {
+      const response = await this.post('/ikigai/save-ikigai-result', {
+        user_id: userId,
+        ikigai_result: ikigaiResult
+      });
+      
+      return response;
+    } catch (error) {
+      throw new Error(error.response?.data?.detail || 'Failed to save Ikigai result');
+    }
+  }
 }

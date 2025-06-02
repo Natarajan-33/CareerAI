@@ -1,53 +1,36 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Query
-from typing import List, Optional
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Body
+from typing import List, Optional, Dict, Any
 
 from app.models.project import ProjectCreate, ProjectResponse, DomainResponse
+from app.services.ai_service import AIService
 
 router = APIRouter()
+
+# Initialize AI service
+ai_service = AIService()
 
 
 @router.get("/domains", response_model=List[DomainResponse])
 async def get_domains():
     """Get all available AI/ML domains."""
     # This is a placeholder - will be implemented with Supabase integration
-    return [
-        {
-            "id": "mlops",
-            "name": "MLOps",
-            "description": "Machine Learning Operations focuses on deploying and maintaining ML models in production.",
-            "icon": "server",
-            "color": "blue",
-            "required_skills": ["Python", "Docker", "CI/CD", "Cloud Platforms"],
-            "job_titles": ["MLOps Engineer", "ML Platform Engineer", "DevOps for ML"]
-        },
-        {
-            "id": "nlp",
-            "name": "Natural Language Processing",
-            "description": "NLP focuses on enabling computers to understand and process human language.",
-            "icon": "chat",
-            "color": "purple",
-            "required_skills": ["Python", "Linguistics", "Deep Learning", "Transformers"],
-            "job_titles": ["NLP Engineer", "Conversational AI Developer", "Text Analytics Specialist"]
-        },
-        {
-            "id": "cv",
-            "name": "Computer Vision",
-            "description": "Computer Vision involves teaching computers to gain high-level understanding from digital images or videos.",
-            "icon": "eye",
-            "color": "green",
-            "required_skills": ["Python", "OpenCV", "Deep Learning", "Image Processing"],
-            "job_titles": ["Computer Vision Engineer", "Image Processing Specialist", "Video Analytics Engineer"]
-        },
-        {
-            "id": "robotics",
-            "name": "Robotics",
-            "description": "Robotics combines mechanical engineering, electrical engineering, and computer science to create autonomous systems.",
-            "icon": "robot",
-            "color": "orange",
-            "required_skills": ["ROS", "Python/C++", "Control Systems", "Sensor Fusion"],
-            "job_titles": ["Robotics Engineer", "Automation Specialist", "Robotics Software Developer"]
-        }
-    ]
+    return []
+
+
+@router.post("/domains/generate", response_model=List[DomainResponse])
+async def generate_domains(data: Dict[str, Any] = Body(...)):
+    """Generate domains based on ikigai summary."""
+    ikigai_summary = data.get("ikigai_summary", "")
+    
+    if not ikigai_summary:
+        raise HTTPException(status_code=400, detail="Ikigai summary is required")
+    
+    try:
+        # Generate domains using AI service
+        domains = await ai_service.generate_domains_from_ikigai(ikigai_summary)
+        return domains
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to generate domains: {str(e)}")
 
 
 @router.get("/domain/{domain_id}", response_model=DomainResponse)
