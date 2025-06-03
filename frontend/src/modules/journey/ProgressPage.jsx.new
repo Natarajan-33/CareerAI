@@ -1,0 +1,235 @@
+import React, { useEffect, useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { observer } from 'mobx-react-lite';
+import { useProjectStore, useProgressStore } from '../../stores/RootStore.js';
+import TaskCheckbox from '../../components/TaskCheckbox.jsx';
+import ProgressBar from '../../components/ProgressBar.jsx';
+import Button from '../../components/Button.jsx';
+
+const ProgressPage = observer(() => {
+  const { projectId } = useParams();
+  const projectStore = useProjectStore();
+  const progressStore = useProgressStore();
+  const navigate = useNavigate();
+  const [completedTasks, setCompletedTasks] = useState({});
+  
+  useEffect(() => {
+    // Check if we have a project ID in session storage
+    const storedProjectId = sessionStorage.getItem('selectedProjectId');
+    
+    // If no projectId in URL but we have one in session storage, use that
+    const targetProjectId = projectId || storedProjectId;
+    
+    if (targetProjectId) {
+      // Load project if not already loaded or if it's a different project
+      if (!projectStore.selectedProject || projectStore.selectedProject.id !== targetProjectId) {
+        projectStore.loadProject(targetProjectId);
+      }
+      
+      // Load saved progress from localStorage if available
+      const savedProgress = localStorage.getItem(`project_progress_${targetProjectId}`);
+      if (savedProgress) {
+        setCompletedTasks(JSON.parse(savedProgress));
+      }
+      
+      // If we navigated here without a projectId in the URL, update the URL
+      if (!projectId && storedProjectId) {
+        navigate(`/progress/${storedProjectId}`, { replace: true });
+      }
+    } else {
+      // If no project ID is available, redirect to projects page
+      navigate('/projects');
+    }
+  }, [projectId, projectStore, navigate]);
+  
+  const handleTaskChange = (taskId, isCompleted) => {
+    const updatedTasks = { ...completedTasks, [taskId]: isCompleted };
+    setCompletedTasks(updatedTasks);
+    
+    // Get the actual project ID (from URL or session storage)
+    const targetProjectId = projectId || sessionStorage.getItem('selectedProjectId');
+    
+    // Save progress to localStorage
+    localStorage.setItem(`project_progress_${targetProjectId}`, JSON.stringify(updatedTasks));
+  };
+  
+  const handleResetProgress = () => {
+    setCompletedTasks({});
+    const targetProjectId = projectId || sessionStorage.getItem('selectedProjectId');
+    localStorage.removeItem(`project_progress_${targetProjectId}`);
+  };
+  
+  // Calculate progress
+  const calculateProgress = () => {
+    if (!projectStore.selectedProject || !projectStore.selectedProject.tasks) return 0;
+    
+    const totalTasks = projectStore.selectedProject.tasks.length;
+    if (totalTasks === 0) return 0;
+    
+    const completed = Object.values(completedTasks).filter(Boolean).length;
+    return completed;
+  };
+  
+  const completedCount = calculateProgress();
+  const totalTasks = projectStore.selectedProject?.tasks?.length || 0;
+  
+  return (
+    <div className="p-6">
+      {projectStore.isLoading ? (
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+        </div>
+      ) : !projectStore.selectedProject ? (
+        <div className="text-center py-12">
+          <p className="text-gray-600 dark:text-gray-400 mb-4">Project not found.</p>
+          <Button variant="outline" onClick={() => navigate('/projects')}>
+            Back to Projects
+          </Button>
+        </div>
+      ) : (
+        <>
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">{projectStore.selectedProject.title}</h1>
+              <p className="text-gray-600 dark:text-gray-400">
+                Track your progress through this project
+              </p>
+            </div>
+            <div className="mt-4 md:mt-0">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => navigate('/projects')}
+                className="mr-2"
+              >
+                Back to Projects
+              </Button>
+              <Button 
+                variant="danger" 
+                size="sm" 
+                onClick={handleResetProgress}
+              >
+                Reset Progress
+              </Button>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div className="md:col-span-2">
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Project Description</h2>
+                <p className="text-gray-600 dark:text-gray-400 mb-4">
+                  {projectStore.selectedProject.description}
+                </p>
+                
+                <div className="flex flex-wrap gap-2 mb-4">
+                  <span className={`px-2.5 py-0.5 text-sm rounded-full ${
+                    projectStore.selectedProject.difficulty === 'beginner' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
+                    projectStore.selectedProject.difficulty === 'intermediate' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
+                    'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                  }`}>
+                    {projectStore.selectedProject.difficulty.charAt(0).toUpperCase() + projectStore.selectedProject.difficulty.slice(1)} Difficulty
+                  </span>
+                  <span className="px-2.5 py-0.5 text-sm rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                    Estimated: {projectStore.selectedProject.estimated_hours} hours
+                  </span>
+                </div>
+                
+                <div className="mb-4">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Required Skills</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {projectStore.selectedProject.skills_required.map((skill, index) => (
+                      <span
+                        key={index}
+                        className="px-3 py-1 text-sm rounded-full bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200"
+                      >
+                        {skill}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              
+              {projectStore.selectedProject.resource_links && projectStore.selectedProject.resource_links.length > 0 && (
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                  <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Helpful Resources</h2>
+                  <ul className="space-y-2">
+                    {projectStore.selectedProject.resource_links.map((link, index) => (
+                      <li key={index} className="flex items-start">
+                        <svg className="w-5 h-5 text-primary-600 mr-2 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                        </svg>
+                        <a 
+                          href={link.url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-primary-600 hover:underline dark:text-primary-400"
+                        >
+                          {link.title}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+            
+            <div className="md:col-span-1">
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Your Progress</h2>
+                <ProgressBar 
+                  value={completedCount} 
+                  max={totalTasks} 
+                  label="Tasks Completed" 
+                />
+                
+                <div className="mt-4 text-center">
+                  <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                    {completedCount} / {totalTasks}
+                  </p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    tasks completed
+                  </p>
+                </div>
+                
+                {completedCount === totalTasks && totalTasks > 0 && (
+                  <div className="mt-6 p-4 bg-green-100 dark:bg-green-900 rounded-lg">
+                    <p className="text-green-800 dark:text-green-200 font-medium text-center">
+                      Congratulations! You've completed all tasks for this project.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white p-6 border-b border-gray-200 dark:border-gray-700">
+              Project Tasks
+            </h2>
+            <div className="divide-y divide-gray-200 dark:divide-gray-700">
+              {projectStore.selectedProject.tasks && projectStore.selectedProject.tasks.length > 0 ? (
+                projectStore.selectedProject.tasks
+                  .sort((a, b) => (a.order || 0) - (b.order || 0))
+                  .map(task => (
+                    <TaskCheckbox
+                      key={task.id}
+                      task={task}
+                      isCompleted={!!completedTasks[task.id]}
+                      onChange={handleTaskChange}
+                    />
+                  ))
+              ) : (
+                <div className="p-6 text-center text-gray-500 dark:text-gray-400">
+                  No tasks available for this project.
+                </div>
+              )}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+});
+
+export default ProgressPage;

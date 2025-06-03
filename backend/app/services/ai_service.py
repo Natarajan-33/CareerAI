@@ -373,6 +373,167 @@ class AIService:
             print(f"Error saving Ikigai result: {e}")
             return {"success": False, "error": str(e), "id": None}
     
+    async def generate_projects_for_domain(self, domain_id: str, domain_name: str, domain_description: str) -> List[Dict[str, Any]]:
+        """Generate project recommendations for a specific domain.
+        
+        Args:
+            domain_id: The ID of the domain
+            domain_name: The name of the domain
+            domain_description: The description of the domain
+            
+        Returns:
+            A list of project objects with id, title, description, difficulty, skills_required, tasks, etc.
+        """
+        try:
+            # Prepare the prompt for project generation
+            prompt = f"""Based on the following domain information, generate 3-5 project ideas that would help someone build skills in this domain.
+            For each project, provide:
+            1. A unique ID (lowercase, no spaces, prefixed with the domain_id)
+            2. A title for the project
+            3. A detailed description of the project and what it involves
+            4. A difficulty level (beginner, intermediate, or advanced)
+            5. A list of 3-6 required skills for the project
+            6. A list of 5-7 specific tasks that need to be completed for the project, each with an ID, title, description, and order
+            7. A list of 2-3 resource links (title and URL) that would be helpful for completing the project
+            8. An estimated number of hours to complete the project
+            
+            Format your response as a valid JSON array of project objects.
+            
+            Domain ID: {domain_id}
+            Domain Name: {domain_name}
+            Domain Description: {domain_description}
+            """
+            
+            # Make the LLM call
+            response = self.client.chat.completions.create(
+                model="deepseek-r1-distill-llama-70b",
+                messages=[
+                    {"role": "system", "content": "You are an expert project designer who specializes in creating educational projects for skill development in various domains."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.7
+            )
+            
+            # Extract and parse the response
+            content = remove_think_tags(response.choices[0].message.content)
+            
+            # Try to extract JSON from the content
+            import json
+            import re
+            
+            # Look for JSON pattern in the response
+            json_match = re.search(r'```json\s*([\s\S]*?)\s*```|\{[\s\S]*\}|\[[\s\S]*\]', content)
+            if json_match:
+                json_content = json_match.group(1) if json_match.group(1) else json_match.group(0)
+                # Clean up any remaining markdown or extra characters
+                json_content = re.sub(r'^```json\s*|\s*```$', '', json_content)
+                # Parse the extracted JSON
+                projects = json.loads(json_content)
+            else:
+                # If no JSON pattern found, try parsing the whole content
+                projects = json.loads(content)
+            
+            # Ensure we have a list of projects
+            if not isinstance(projects, list):
+                if isinstance(projects, dict):
+                    # If we got a single project object, wrap it in a list
+                    projects = [projects]
+                else:
+                    # If we got something else, return an empty list
+                    projects = []
+            
+            # Validate and clean up each project
+            valid_projects = []
+            for i, project in enumerate(projects):
+                if not isinstance(project, dict):
+                    continue
+                
+                # Ensure all required fields are present
+                valid_project = {
+                    "id": project.get("id", f"{domain_id}_project_{i}"),
+                    "domain": domain_id,
+                    "title": project.get("title", "Untitled Project"),
+                    "description": project.get("description", "No description available"),
+                    "difficulty": project.get("difficulty", "intermediate"),
+                    "skills_required": project.get("skills_required", []),
+                    "estimated_hours": project.get("estimated_hours", 20)
+                }
+                
+                # Process tasks
+                tasks = project.get("tasks", [])
+                if not isinstance(tasks, list):
+                    tasks = []
+                
+                valid_tasks = []
+                for j, task in enumerate(tasks):
+                    if not isinstance(task, dict):
+                        continue
+                    
+                    valid_task = {
+                        "id": task.get("id", f"task_{j}"),
+                        "title": task.get("title", f"Task {j+1}"),
+                        "description": task.get("description", "No description available"),
+                        "order": task.get("order", j+1)
+                    }
+                    
+                    valid_tasks.append(valid_task)
+                
+                valid_project["tasks"] = valid_tasks
+                
+                # Process resource links
+                resource_links = project.get("resource_links", [])
+                if not isinstance(resource_links, list):
+                    resource_links = []
+                
+                valid_resource_links = []
+                for resource in resource_links:
+                    if not isinstance(resource, dict):
+                        continue
+                    
+                    # Ensure the URL is valid
+                    url = resource.get("url", "")
+                    if not url.startswith("http"):
+                        url = "https://" + url
+                    
+                    valid_resource = {
+                        "title": resource.get("title", "Resource"),
+                        "url": url
+                    }
+                    
+                    valid_resource_links.append(valid_resource)
+                
+                valid_project["resource_links"] = valid_resource_links
+                
+                valid_projects.append(valid_project)
+            
+            return valid_projects
+            
+        except Exception as e:
+            print(f"Error generating projects for domain: {e}")
+            # Return a default project as fallback
+            return [
+                {
+                    "id": f"{domain_id}_default_project",
+                    "domain": domain_id,
+                    "title": f"Introduction to {domain_name}",
+                    "description": f"A beginner-friendly project to introduce you to the basics of {domain_name}.",
+                    "difficulty": "beginner",
+                    "skills_required": ["Basic Programming", "Problem Solving"],
+                    "tasks": [
+                        {"id": "task1", "title": "Set up your development environment", "description": "Install the necessary tools and libraries", "order": 1},
+                        {"id": "task2", "title": "Learn the fundamentals", "description": "Study the core concepts of the domain", "order": 2},
+                        {"id": "task3", "title": "Build a simple application", "description": "Create a basic project to apply what you've learned", "order": 3},
+                        {"id": "task4", "title": "Test your application", "description": "Ensure your project works as expected", "order": 4},
+                        {"id": "task5", "title": "Document your work", "description": "Create documentation for your project", "order": 5}
+                    ],
+                    "resource_links": [
+                        {"title": "Getting Started Guide", "url": "https://example.com/getting-started"},
+                        {"title": "Best Practices", "url": "https://example.com/best-practices"}
+                    ],
+                    "estimated_hours": 15
+                }
+            ]
+    
     async def generate_domains_from_ikigai(self, ikigai_summary: str) -> List[Dict[str, Any]]:
         """Generate domain recommendations based on ikigai summary.
         

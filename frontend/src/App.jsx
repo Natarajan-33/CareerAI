@@ -7,7 +7,7 @@ import MainLayout from './layout/MainLayout.jsx';
 // Page components
 import HomePage from './modules/home/HomePage.jsx';
 import IkigaiPage from './modules/ikigai/IkigaiPage.jsx';
-import { BuildInPublicPage, DomainSelectionPage } from './modules/journey';
+import { BuildInPublicPage, DomainSelectionPage, ProjectsPage, ProgressPage } from './modules/journey';
 
 // Store
 import { rootStore, RootStoreProvider } from './stores/index.js';
@@ -105,9 +105,14 @@ const JourneyPage = () => (
 );
 
 // Journey sub-pages with animations
-// DomainSelectionPage is imported from journey module
+// All journey pages are now imported from the journey module
 
-const ProjectsPage = () => (
+// These placeholder components are no longer needed since we're importing the actual components
+// from the journey module
+
+// Note: The commented code below is kept for reference but is no longer used
+/*
+const ProjectsPagePlaceholder = () => (
   <PageWrapper title="Projects">
     <motion.p 
       initial={{ opacity: 0 }}
@@ -120,7 +125,7 @@ const ProjectsPage = () => (
   </PageWrapper>
 );
 
-const ProgressPage = () => (
+const ProgressPagePlaceholder = () => (
   <PageWrapper title="Progress Tracking">
     <motion.p 
       initial={{ opacity: 0 }}
@@ -132,6 +137,7 @@ const ProgressPage = () => (
     </motion.p>
   </PageWrapper>
 );
+*/
 
 // BuildInPublicPage is imported from journey module
 
@@ -243,7 +249,7 @@ function App() {
             <Route path="journey" element={<JourneyPage />} />
             <Route path="domains" element={<DomainSelectionPage />} />
             <Route path="projects" element={<ProjectsPage />} />
-            <Route path="progress" element={<ProgressPage />} />
+            <Route path="progress/:projectId" element={<ProgressPage />} />
             <Route path="build-in-public" element={<BuildInPublicPage />} />
             <Route path="milestones" element={<MilestonesPage />} />
             <Route path="friction-points" element={<FrictionPointsPage />} />

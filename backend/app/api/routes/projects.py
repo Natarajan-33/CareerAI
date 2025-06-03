@@ -44,6 +44,111 @@ async def get_domain(domain_id: str):
     raise HTTPException(status_code=404, detail="Domain not found")
 
 
+@router.get("/domain/{domain_id}/projects", response_model=List[ProjectResponse])
+async def get_domain_projects(domain_id: str, generate: bool = Query(False)):
+    """Get projects for a specific domain. Optionally generate new projects if none exist."""
+    # First try to get existing projects for this domain
+    projects = await get_projects(domain=domain_id)
+    
+    # If no projects found and generate flag is true, generate new projects
+    if not projects and generate:
+        try:
+            # Get the domain details first
+            domain = None
+            try:
+                domain = await get_domain(domain_id)
+            except HTTPException:
+                # If domain not found, create a minimal domain object
+                domain = {
+                    "id": domain_id,
+                    "name": domain_id.capitalize(),
+                    "description": f"Domain related to {domain_id}"
+                }
+            
+            # Try to generate projects using AI service
+            try:
+                projects = await ai_service.generate_projects_for_domain(
+                    domain_id=domain["id"],
+                    domain_name=domain["name"],
+                    domain_description=domain["description"]
+                )
+            except Exception as e:
+                print(f"Error generating projects for domain: {str(e)}")
+                # Fallback to default projects if AI generation fails
+                projects = [
+                    {
+                        "id": f"{domain_id}_project_1",
+                        "domain": domain_id,
+                        "title": f"Beginner {domain['name']} Project",
+                        "description": f"A beginner-friendly project to introduce you to the basics of {domain['name']}.",
+                        "difficulty": "beginner",
+                        "skills_required": ["Basic Programming", "Problem Solving"],
+                        "tasks": [
+                            {"id": "task1", "title": "Set up your development environment", "description": "Install the necessary tools and libraries", "order": 1},
+                            {"id": "task2", "title": "Learn the fundamentals", "description": "Study the core concepts of the domain", "order": 2},
+                            {"id": "task3", "title": "Build a simple application", "description": "Create a basic project to apply what you've learned", "order": 3},
+                            {"id": "task4", "title": "Test your application", "description": "Ensure your project works as expected", "order": 4},
+                            {"id": "task5", "title": "Document your work", "description": "Create documentation for your project", "order": 5}
+                        ],
+                        "resource_links": [
+                            {"title": "Getting Started Guide", "url": "https://example.com/getting-started"},
+                            {"title": "Best Practices", "url": "https://example.com/best-practices"}
+                        ],
+                        "estimated_hours": 15
+                    },
+                    {
+                        "id": f"{domain_id}_project_2",
+                        "domain": domain_id,
+                        "title": f"Intermediate {domain['name']} Challenge",
+                        "description": f"Build on your knowledge with this intermediate-level project in {domain['name']}.",
+                        "difficulty": "intermediate",
+                        "skills_required": ["Programming", "Data Structures", "Problem Solving"],
+                        "tasks": [
+                            {"id": "task1", "title": "Project planning", "description": "Define the scope and requirements of your project", "order": 1},
+                            {"id": "task2", "title": "Design the architecture", "description": "Create a solid architecture for your application", "order": 2},
+                            {"id": "task3", "title": "Implement core functionality", "description": "Build the main features of your project", "order": 3},
+                            {"id": "task4", "title": "Add advanced features", "description": "Enhance your project with more complex functionality", "order": 4},
+                            {"id": "task5", "title": "Testing and optimization", "description": "Test your project thoroughly and optimize performance", "order": 5},
+                            {"id": "task6", "title": "Documentation and deployment", "description": "Document your project and deploy it", "order": 6}
+                        ],
+                        "resource_links": [
+                            {"title": "Advanced Techniques", "url": "https://example.com/advanced-techniques"},
+                            {"title": "Performance Optimization", "url": "https://example.com/optimization"}
+                        ],
+                        "estimated_hours": 25
+                    },
+                    {
+                        "id": f"{domain_id}_project_3",
+                        "domain": domain_id,
+                        "title": f"Advanced {domain['name']} Implementation",
+                        "description": f"Demonstrate mastery of {domain['name']} with this advanced project.",
+                        "difficulty": "advanced",
+                        "skills_required": ["Advanced Programming", "System Design", "Performance Optimization", "Testing"],
+                        "tasks": [
+                            {"id": "task1", "title": "Research and planning", "description": "Research advanced techniques and plan your implementation", "order": 1},
+                            {"id": "task2", "title": "Design system architecture", "description": "Create a scalable and efficient architecture", "order": 2},
+                            {"id": "task3", "title": "Implement core system", "description": "Build the foundation of your advanced system", "order": 3},
+                            {"id": "task4", "title": "Add specialized features", "description": "Implement domain-specific advanced features", "order": 4},
+                            {"id": "task5", "title": "Optimization and scaling", "description": "Optimize your system for performance and scalability", "order": 5},
+                            {"id": "task6", "title": "Comprehensive testing", "description": "Create and run extensive tests for your system", "order": 6},
+                            {"id": "task7", "title": "Documentation and presentation", "description": "Create detailed documentation and prepare a presentation", "order": 7}
+                        ],
+                        "resource_links": [
+                            {"title": "Expert Guides", "url": "https://example.com/expert-guides"},
+                            {"title": "Research Papers", "url": "https://example.com/research-papers"},
+                            {"title": "Industry Standards", "url": "https://example.com/standards"}
+                        ],
+                        "estimated_hours": 40
+                    }
+                ]
+        except Exception as e:
+            print(f"Error in domain projects endpoint: {str(e)}")
+            # Return empty list instead of raising an exception
+            projects = []
+    
+    return projects
+
+
 @router.get("/", response_model=List[ProjectResponse])
 async def get_projects(domain: Optional[str] = None, difficulty: Optional[str] = None):
     """Get all projects, optionally filtered by domain and/or difficulty."""
@@ -97,6 +202,27 @@ async def get_projects(domain: Optional[str] = None, difficulty: Optional[str] =
         projects = [p for p in projects if p["difficulty"] == difficulty]
     
     return projects
+
+
+@router.post("/generate", response_model=List[ProjectResponse])
+async def generate_projects(data: Dict[str, Any] = Body(...)):
+    """Generate projects for a specific domain."""
+    domain_id = data.get("domain_id")
+    domain_name = data.get("domain_name")
+    domain_description = data.get("domain_description")
+    
+    if not domain_id or not domain_name:
+        raise HTTPException(status_code=400, detail="Domain ID and name are required")
+    
+    if not domain_description:
+        domain_description = f"Domain related to {domain_name}"
+    
+    try:
+        # Generate projects using AI service
+        projects = await ai_service.generate_projects_for_domain(domain_id, domain_name, domain_description)
+        return projects
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to generate projects: {str(e)}")
 
 
 @router.get("/{project_id}", response_model=ProjectResponse)
