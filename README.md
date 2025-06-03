@@ -1,107 +1,92 @@
-# CareerAI 🚀
+# CareerAI
 
-CareerAI is a personalized AI-powered career companion that guides students and professionals through a structured journey toward AI/ML and robotics roles. It helps users align personal interests with market demand, identify the right domain, execute meaningful projects, and build in public — all in one place.
+An AI-powered career discovery and execution platform that guides users through a personalized journey into high-demand AI/ML and robotics roles.
 
-## Features
+## 🚀 Overview
 
-- **🎯 Ikigai Discovery**: AI-assisted journaling to assess passion, strengths, and goals, with market-aligned domain suggestions
-- **🧩 Domain Selection**: Choose and refine your AI/ML specialization
-- **🛠️ Project Selection**: Access curated projects with step-by-step task breakdowns
-- **📊 Progress Tracking**: Monitor your learning journey with visual indicators
-- **🌐 Build in Public**: Generate social media posts to share your progress
+CareerAI enables users to uncover their Ikigai through a chatbot interface and then guides them through structured project-based execution in their chosen domain. With an intuitive and engaging UI, it provides a seamless experience from career discovery to execution.
 
-## Getting Started
+## 🌟 Key Features
 
-### Prerequisites
+* **Ikigai Chatbot** – A conversational, sentiment-aware assistant to identify personal passion and strengths
+* **Execution Hub** – Suggests AI/ML domains, projects, tasks, and tracks progress visually
+* **Build in Public** – Generate and share progress on social media
+* **Progress Tracking** – Visual representation of milestones and achievements
 
-- Python 3.7+
-- Streamlit
-- Supabase account (for database and authentication)
-- OpenAI API key (for AI features)
+## 💻 Tech Stack
 
-### Installation
+| Layer        | Stack                         |
+| ------------ | ----------------------------- |
+| Frontend     | React, TailwindCSS, MobX      |
+| Backend      | FastAPI, Pydantic             |
+| DB/Auth      | Supabase (PostgreSQL + Auth)  |
+| LLM Services | OpenAI / Gemini               |
+| Hosting      | Vercel (frontend), Render API |
 
-1. Clone the repository:
-```bash
-git clone https://github.com/yourusername/CareerAI.git
-cd CareerAI
+## 🏗️ Project Structure
+
+```
+careerai/
+├── frontend/                  # React App
+│   ├── public/
+│   ├── src/
+│   │   ├── assets/            # SVGs, images
+│   │   ├── components/        # Atomic components (buttons, cards, forms)
+│   │   ├── layout/            # Layout components (navbar, footer, containers)
+│   │   ├── modules/           # Page-level modules
+│   │   │   ├── ikigai/        # Ikigai chatbot, sentiment analysis
+│   │   │   └── journey/       # Domain selection, project view, task tracker
+│   │   ├── stores/            # MobX stores (auth, ikigai, progress, project)
+│   │   ├── services/          # Axios API clients
+│   │   ├── utils/             # Helper functions, constants
+│   │   ├── App.tsx
+│   │   └── main.tsx
+│   ├── tailwind.config.js
+│   └── index.html
+├── backend/                   # FastAPI Backend
+│   ├── app/
+│   │   ├── api/
+│   │   │   ├── routes/        # ikigai.py, auth.py, projects.py, progress.py
+│   │   │   └── api.py
+│   │   ├── models/            # Pydantic & DB models
+│   │   ├── core/              # Settings, config, CORS, security
+│   │   ├── db/                # Supabase integration, queries
+│   │   ├── services/          # AI, domain suggestion, post generation
+│   │   └── main.py
 ```
 
-2. Install dependencies:
+## 🚀 Getting Started
+
+### Frontend Setup
+
 ```bash
+# Navigate to frontend directory
+cd frontend
+
+# Install dependencies
+npm install
+
+# Start development server
+npm run dev
+```
+
+### Backend Setup
+
+```bash
+# Navigate to backend directory
+cd backend
+
+# Create and activate virtual environment
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Install dependencies
 pip install -r requirements.txt
+
+# Start development server
+uvicorn app.main:app --reload
 ```
 
-3. Create a `.env` file with your API keys:
-```
-SUPABASE_URL=your_supabase_url_here
-SUPABASE_KEY=your_supabase_key_here
-OPENAI_API_KEY=your_openai_api_key_here
-```
+## 📄 License
 
-4. Run the application:
-```bash
-streamlit run app.py
-```
-
-## Supabase Setup
-
-For the database functionality to work, you need to set up the following tables in your Supabase project:
-
-1. **user_profiles**:
-   - user_id (UUID, primary key)
-   - profile_type (text)
-   - skill_level (text)
-   - immediate_goals (JSON)
-   - created_at (timestamp with timezone)
-
-2. **ikigai_logs**:
-   - id (UUID, primary key)
-   - user_id (UUID, foreign key)
-   - passion (text)
-   - strengths (text)
-   - ai_suggestion (text)
-   - final_domain (text)
-   - created_at (timestamp with timezone)
-
-3. **projects**:
-   - id (UUID, primary key)
-   - user_id (UUID, foreign key)
-   - title (text)
-   - description (text)
-   - difficulty (text)
-   - time_estimate (text)
-   - tasks (JSON)
-   - domain (text)
-   - created_at (timestamp with timezone)
-
-4. **progress_entries**:
-   - id (UUID, primary key)
-   - user_id (UUID, foreign key)
-   - project_id (text)
-   - project_title (text)
-   - progress_percentage (integer)
-   - completed_tasks (JSON)
-   - timestamp (timestamp with timezone)
-
-## Project Structure
-
-- `app.py`: Main Streamlit application
-- `utils/supabase.py`: Supabase client and database operations
-- `utils/ai_services.py`: OpenAI integration for domain suggestions and social posts
-- `requirements.txt`: Project dependencies
-- `.env`: Environment variables (API keys)
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## Acknowledgements
-
-- [Streamlit](https://streamlit.io/) for the web framework
-- [Supabase](https://supabase.io/) for database and authentication
-- [OpenAI](https://openai.com/) for AI services 
+MIT
