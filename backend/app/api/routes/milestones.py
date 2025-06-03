@@ -32,6 +32,7 @@ async def create_milestone(
         "description": milestone.description,
         "due_date": milestone.due_date.isoformat(),
         "status": milestone.status,
+        "task_id": milestone.task_id,
         "created_at": now,
         "updated_at": now
     }

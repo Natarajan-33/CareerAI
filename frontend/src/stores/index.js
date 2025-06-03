@@ -1,4 +1,4 @@
-import { RootStore, RootStoreProvider, useRootStore, useAuthStore, useIkigaiStore, useProjectStore, useProgressStore } from './RootStore.js';
+import { RootStore, RootStoreProvider, useRootStore, useAuthStore, useIkigaiStore, useProjectStore, useProgressStore, useFrictionPointStore } from './RootStore.js';
 
 // Create a singleton instance of the RootStore
 const rootStore = new RootStore();
@@ -10,5 +10,6 @@ export {
   useAuthStore,
   useIkigaiStore,
   useProjectStore,
-  useProgressStore
+  useProgressStore,
+  useFrictionPointStore
 };

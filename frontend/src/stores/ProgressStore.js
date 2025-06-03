@@ -85,28 +85,130 @@ export class ProgressStore {
   };
   
   /**
-   * Load milestones for the current user
+   * Load milestones for the current user and project
    */
-  loadMilestones = async () => {
+  loadMilestones = async (projectId) => {
     if (!this.rootStore.authStore.isAuthenticated) return;
     
     this.isLoading = true;
     this.error = null;
     
     try {
-      const milestones = await this.progressService.getUserMilestones(
-        this.rootStore.authStore.user.id
-      );
+      let milestones;
+      if (projectId) {
+        // Get milestones for a specific project
+        milestones = await this.progressService.getProjectMilestones(projectId);
+      } else {
+        // Get all milestones for the user
+        milestones = await this.progressService.getUserMilestones(
+          this.rootStore.authStore.user.id
+        );
+      }
       
       runInAction(() => {
         this.milestones = milestones;
         this.isLoading = false;
       });
+      
+      return milestones;
     } catch (error) {
       runInAction(() => {
         this.isLoading = false;
         this.error = error.message || 'Failed to load milestones';
       });
+      return [];
+    }
+  };
+  
+  /**
+   * Create a new milestone
+   */
+  createMilestone = async (milestoneData) => {
+    if (!this.rootStore.authStore.isAuthenticated) return false;
+    
+    this.isLoading = true;
+    this.error = null;
+    
+    try {
+      const milestone = await this.progressService.createMilestone({
+        ...milestoneData,
+        userId: this.rootStore.authStore.user.id,
+      });
+      
+      runInAction(() => {
+        this.milestones.push(milestone);
+        this.isLoading = false;
+      });
+      
+      return milestone;
+    } catch (error) {
+      runInAction(() => {
+        this.isLoading = false;
+        this.error = error.message || 'Failed to create milestone';
+      });
+      
+      return null;
+    }
+  };
+  
+  /**
+   * Update an existing milestone
+   */
+  updateMilestone = async (milestoneData) => {
+    if (!this.rootStore.authStore.isAuthenticated) return false;
+    
+    this.isLoading = true;
+    this.error = null;
+    
+    try {
+      const updatedMilestone = await this.progressService.updateMilestone(milestoneData);
+      
+      runInAction(() => {
+        // Find and update the milestone in the array
+        const index = this.milestones.findIndex(m => m.id === milestoneData.id);
+        if (index !== -1) {
+          this.milestones[index] = updatedMilestone;
+        }
+        this.isLoading = false;
+      });
+      
+      return updatedMilestone;
+    } catch (error) {
+      runInAction(() => {
+        this.isLoading = false;
+        this.error = error.message || 'Failed to update milestone';
+      });
+      
+      return null;
+    }
+  };
+  
+  /**
+   * Delete a milestone
+   */
+  deleteMilestone = async (milestoneId) => {
+    if (!this.rootStore.authStore.isAuthenticated) return false;
+    
+    this.isLoading = true;
+    this.error = null;
+    
+    try {
+      await this.progressService.deleteMilestone(milestoneId);
+      
+      runInAction(() => {
+        // Remove the milestone from the array
+        this.milestones = this.milestones.filter(m => m.id !== milestoneId);
+        this.isLoading = false;
+      });
+      
+      return true;
+    } catch (error) {
+      runInAction(() => {
+        this.isLoading = false;
+        this.error = error.message || 'Failed to delete milestone';
+      });
+      
+      return false;
     }
   };
   

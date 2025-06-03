@@ -3,6 +3,7 @@ import { AuthStore } from './AuthStore.js';
 import { IkigaiStore } from './IkigaiStore.js';
 import { ProjectStore } from './ProjectStore.js';
 import { ProgressStore } from './ProgressStore.js';
+import { FrictionPointStore } from './FrictionPointStore.js';
 
 /**
  * Root store that combines all other stores
@@ -13,6 +14,7 @@ export class RootStore {
     this.ikigaiStore = new IkigaiStore(this);
     this.projectStore = new ProjectStore(this);
     this.progressStore = new ProgressStore(this);
+    this.frictionPointStore = new FrictionPointStore(this);
   }
 }
 
@@ -36,3 +38,4 @@ export const useAuthStore = () => useRootStore().authStore;
 export const useIkigaiStore = () => useRootStore().ikigaiStore;
 export const useProjectStore = () => useRootStore().projectStore;
 export const useProgressStore = () => useRootStore().progressStore;
+export const useFrictionPointStore = () => useRootStore().frictionPointStore;

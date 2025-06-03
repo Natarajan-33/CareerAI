@@ -7,6 +7,7 @@ class MilestoneBase(BaseModel):
     description: str
     due_date: date
     status: str = Field(default="not_started")  # not_started, in_progress, completed, delayed, at_risk
+    task_id: Optional[str] = None
 
 class MilestoneCreate(MilestoneBase):
     pass

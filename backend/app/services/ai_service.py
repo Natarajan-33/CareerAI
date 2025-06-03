@@ -19,6 +19,160 @@ def remove_think_tags(text):
 
 
 class AIService:
+    async def generate_delta4_analysis(self, project_description: str, current_status: str, challenges: str, goals: str) -> Dict[str, Any]:
+        """
+        Generate a Delta 4 analysis for a project using the AI service.
+        
+        The Delta 4 framework analyzes projects across four dimensions:
+        - Technical: Tools, technologies, and technical challenges
+        - Cultural: Team dynamics, communication, and collaboration
+        - Process: Workflows, methodologies, and project management
+        - Expectation: Alignment between goals, timelines, and reality
+        """
+        try:
+            # Create the client with API key
+            client = Groq(api_key=settings.GROQ_API_KEY)
+            
+            # Prepare the prompt for Delta 4 analysis
+            prompt = f"""
+            You are a project analysis expert using the Delta 4 framework to analyze projects.
+            
+            The Delta 4 framework analyzes projects across four dimensions:
+            1. Technical: Tools, technologies, and technical challenges
+            2. Cultural: Team dynamics, communication, and collaboration
+            3. Process: Workflows, methodologies, and project management
+            4. Expectation: Alignment between goals, timelines, and reality
+            
+            For each dimension, identify both friction points (challenges) and delight points (successes),
+            and provide specific recommendations.
+            
+            Project Description:
+            {project_description}
+            
+            Current Status:
+            {current_status}
+            
+            Current Challenges:
+            {challenges}
+            
+            Goals & Expectations:
+            {goals}
+            
+            Please provide a comprehensive Delta 4 analysis in the following JSON format:
+            {{
+                "summary": "A brief summary of the overall analysis",
+                "technical": {{
+                    "friction": ["List of technical friction points"],
+                    "delight": ["List of technical delight points"],
+                    "recommendations": ["List of technical recommendations"]
+                }},
+                "cultural": {{
+                    "friction": ["List of cultural friction points"],
+                    "delight": ["List of cultural delight points"],
+                    "recommendations": ["List of cultural recommendations"]
+                }},
+                "process": {{
+                    "friction": ["List of process friction points"],
+                    "delight": ["List of process delight points"],
+                    "recommendations": ["List of process recommendations"]
+                }},
+                "expectation": {{
+                    "friction": ["List of expectation friction points"],
+                    "delight": ["List of expectation delight points"],
+                    "recommendations": ["List of expectation recommendations"]
+                }}
+            }}
+            """
+            
+            # Make the API call with retry logic for rate limits
+            max_retries = 3
+            for attempt in range(max_retries):
+                try:
+                    response = client.chat.completions.create(
+                        messages=[
+                            {
+                                "role": "user",
+                                "content": prompt
+                            }
+                        ],
+                        model="llama3-70b-8192",  # Using Llama 3 for structured output
+                    )
+                    break  # Break out of retry loop if successful
+                except Exception as e:
+                    if "rate limit" in str(e).lower() and attempt < max_retries - 1:
+                        # Wait longer for each retry
+                        await asyncio.sleep(2 ** attempt)
+                        continue
+                    raise  # Re-raise if it's not a rate limit or we've exhausted retries
+            
+            # Extract and parse the response
+            response_text = response.choices[0].message.content
+            
+            # Clean up the response text to extract just the JSON part
+            json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
+            if json_match:
+                json_str = json_match.group(0)
+            else:
+                json_str = response_text
+            
+            # Parse the JSON response
+            try:
+                analysis = json.loads(json_str)
+            except json.JSONDecodeError:
+                # Fallback to a simpler structure if JSON parsing fails
+                analysis = {
+                    "summary": "Analysis could not be properly formatted. Please try again.",
+                    "technical": {
+                        "friction": ["Could not parse technical friction points"],
+                        "delight": ["Could not parse technical delight points"],
+                        "recommendations": ["Review the project's technical aspects manually"]
+                    },
+                    "cultural": {
+                        "friction": ["Could not parse cultural friction points"],
+                        "delight": ["Could not parse cultural delight points"],
+                        "recommendations": ["Review the project's cultural aspects manually"]
+                    },
+                    "process": {
+                        "friction": ["Could not parse process friction points"],
+                        "delight": ["Could not parse process delight points"],
+                        "recommendations": ["Review the project's process aspects manually"]
+                    },
+                    "expectation": {
+                        "friction": ["Could not parse expectation friction points"],
+                        "delight": ["Could not parse expectation delight points"],
+                        "recommendations": ["Review the project's expectation alignment manually"]
+                    }
+                }
+            
+            return analysis
+            
+        except Exception as e:
+            print(f"Error in generate_delta4_analysis: {str(e)}")
+            # Return a basic structure in case of error
+            return {
+                "summary": f"Error generating analysis: {str(e)}",
+                "technical": {
+                    "friction": [],
+                    "delight": [],
+                    "recommendations": []
+                },
+                "cultural": {
+                    "friction": [],
+                    "delight": [],
+                    "recommendations": []
+                },
+                "process": {
+                    "friction": [],
+                    "delight": [],
+                    "recommendations": []
+                },
+                "expectation": {
+                    "friction": [],
+                    "delight": [],
+                    "recommendations": []
+                }
+            }
+    
     def __init__(self):
         if not settings.GROQ_API_KEY:
             raise ValueError("GROQ_API_KEY must be set in environment variables")
