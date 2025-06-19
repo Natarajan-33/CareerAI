@@ -40,3 +40,8 @@ ENV/
 # OS files
 .DS_Store
 Thumbs.db 
+
+
+streamlit_env/
+backend_env/
+node_modules/

@@ -8,10 +8,10 @@ from utils.supabase import (
     save_user_profile, save_ikigai_data, 
     save_project_selection, save_progress, save_project_milestone, update_milestone_status
 )
-from utils.ai_services import generate_domain_suggestion, generate_social_media_post, generate_daily_post, analyze_delta4, get_company_insights
+# from utils.ai_services import generate_social_media_post, generate_daily_post, analyze_delta4, get_company_insights
 
 # Load environment variables
-load_dotenv()
+load_dotenv(override=True)
 
 # Helper function to handle both dictionary and Pydantic model user objects
 def get_user_property(user_obj, property_name, default=None):

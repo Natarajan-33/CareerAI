@@ -5,7 +5,7 @@ import re
 
 
 # Load environment variables
-load_dotenv()
+load_dotenv(override=True)
 
 # Initialize Groq client
 client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
