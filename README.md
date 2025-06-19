@@ -1,4 +1,6 @@
 # CareerAI 🚀
+![CareerAI](https://github.com/user-attachments/assets/6a802027-d4b8-4cb8-af1c-00976acba399)
+
 
 CareerAI is a personalized AI-powered career companion that guides students and professionals through a structured journey toward AI/ML and robotics roles. It helps users align personal interests with market demand, identify the right domain, execute meaningful projects, and build in public — all in one place.
 
